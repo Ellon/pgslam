@@ -14,6 +14,7 @@ namespace pgslam {
 
 template<typename T>
 Localizer<T>::Localizer(MapManagerPtr map_manager_ptr) :
+  stop_{false},
   map_manager_ptr_{map_manager_ptr}
 {}
 
