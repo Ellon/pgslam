@@ -96,14 +96,22 @@ void Localizer<T>::Main()
 
     if (not icp_sequence_.hasMap()) {
       map_manager_ptr_->AddFirstKeyframe(cloud_ptr, T_world_robot);
-      icp_sequence_.setMap(map_manager_ptr_->GetUpdatedLocalMap());
+      map_manager_ptr_->UpdateLocalMap();
+      {
+        auto lock = map_manager_ptr_->LocalMapLock();
+        icp_sequence_.setMap(map_manager_ptr_->GetLocalMap());
+      }
       // Nothing more to do with this cloud
       continue;
     }
 
     if (map_manager_ptr_->LocalMapNeedsUpdate()) {
       timer.Start();
-      icp_sequence_.setMap(map_manager_ptr_->GetUpdatedLocalMap());
+      map_manager_ptr_->UpdateLocalMap();
+      {
+        auto lock = map_manager_ptr_->LocalMapLock();
+        icp_sequence_.setMap(map_manager_ptr_->GetLocalMap());
+      }
       timer.Stop("[Localizer] Setting new map");
     }
 
