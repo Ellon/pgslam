@@ -1,5 +1,5 @@
-#ifndef LOCALIZER_HPP
-#define LOCALIZER_HPP
+#ifndef PGSLAM_LOCALIZER_HPP
+#define PGSLAM_LOCALIZER_HPP
 
 #include "Localizer.h"
 
@@ -126,6 +126,6 @@ void Localizer<T>::Main()
 
 } // pgslam
 
-#endif // LOCALIZER_HPP
+#endif // PGSLAM_LOCALIZER_HPP
 
 

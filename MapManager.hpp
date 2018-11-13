@@ -1,5 +1,5 @@
-#ifndef MAP_MANAGER_HPP
-#define MAP_MANAGER_HPP
+#ifndef PGSLAM_MAP_MANAGER_HPP
+#define PGSLAM_MAP_MANAGER_HPP
 
 #include "MapManager.h"
 
@@ -66,4 +66,4 @@ void MapManager<T>::AddKeyframeBasedOnOverlap(T overlap, DPPtr cloud, const Matr
 
 } // pgslam
 
-#endif // MAP_MANAGER_HPP
+#endif // PGSLAM_MAP_MANAGER_HPP

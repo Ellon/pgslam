@@ -1,5 +1,5 @@
-#ifndef MAP_MANAGER_H
-#define MAP_MANAGER_H
+#ifndef PGSLAM_MAP_MANAGER_H
+#define PGSLAM_MAP_MANAGER_H
 
 #include <boost/circular_buffer.hpp>
 
@@ -41,4 +41,4 @@ private:
 
 #include "MapManager.hpp"
 
-#endif // MAP_MANAGER_H
+#endif // PGSLAM_MAP_MANAGER_H

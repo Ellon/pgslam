@@ -1,5 +1,5 @@
-#ifndef LOCALIZER_H
-#define LOCALIZER_H
+#ifndef PGSLAM_LOCALIZER_H
+#define PGSLAM_LOCALIZER_H
 
 #include <deque>
 #include <thread>
@@ -56,4 +56,4 @@ private:
 
 #include "Localizer.hpp"
 
-#endif // LOCALIZER_H
+#endif // PGSLAM_LOCALIZER_H
