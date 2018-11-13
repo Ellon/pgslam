@@ -23,13 +23,23 @@ public:
   using TransformationPtr = typename MapManager<T>::TransformationPtr;
   using MapManagerPtr = typename MapManager<T>::Ptr;
 
+public:
+  struct InputData {
+    unsigned long long int timestamp;
+    std::string world_frame_id;
+    Matrix T_world_robot;
+    Matrix T_robot_sensor;
+    DPPtr cloud_ptr;
+  };
+
+public:
   Localizer(MapManagerPtr map_manager_ptr);
   ~Localizer();
 
   void SetLocalIcpConfig(const std::string &config_path);
   void SetInputFiltersConfig(const std::string &config_path);
 
-  void AddNewData(const DPPtr cloud, const Matrix &T_world_robot, const Matrix &T_robot_sensor);
+  void AddNewData(const InputData &data);
   void Run();
   void Main();
 
@@ -37,7 +47,7 @@ private:
   //! 
   bool stop_ = {false};
   //! Buffer with new data to be processed
-  std::deque<std::tuple<DPPtr, Matrix, Matrix>> new_data_buffer_;
+  std::deque<InputData> new_data_buffer_;
   //! Mutex to control access to new_data_buffer_
   std::mutex new_data_mutex_;
   //! Condition variable to inform localization thread of new data

@@ -43,11 +43,11 @@ void Localizer<T>::SetInputFiltersConfig(const std::string &config_path)
 }
 
 template<typename T>
-void Localizer<T>::AddNewData(const DPPtr cloud_ptr, const Matrix &T_world_robot, const Matrix &T_robot_sensor)
+void Localizer<T>::AddNewData(const InputData & data)
 {
   { // Add to buffer
     std::unique_lock<std::mutex> lock(new_data_mutex_);
-    new_data_buffer_.push_back(std::make_tuple(cloud_ptr, T_world_robot, T_robot_sensor));
+    new_data_buffer_.push_back(data);
   }
   // notify main thread
   new_data_cond_var_.notify_one();
@@ -80,7 +80,10 @@ void Localizer<T>::Main()
         });
       // Check for shutdown
       if (stop_) break;
-      std::tie(cloud_ptr, T_world_robot, T_robot_sensor) = new_data_buffer_.front();
+      const InputData & data = new_data_buffer_.front();
+      cloud_ptr = data.cloud_ptr;
+      T_world_robot = data.T_world_robot;
+      T_robot_sensor = data.T_robot_sensor;
       new_data_buffer_.pop_front();
     }
 
