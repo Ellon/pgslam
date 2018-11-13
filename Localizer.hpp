@@ -8,6 +8,8 @@
 
 #include <chrono> // to compute time spent 
 
+#include "Timer.h"
+
 namespace pgslam {
 
 template<typename T>
@@ -53,6 +55,7 @@ void Localizer<T>::AddNewData(const DPPtr cloud_ptr, const Matrix &T_world_robot
 template<typename T>
 void Localizer<T>::Run()
 {
+  std::cout << "[Localizer] Starting main thread...\n";
   stop_ = false;
   main_thread_ = std::thread(&Localizer<T>::Main, this);
 }
@@ -61,6 +64,8 @@ template<typename T>
 void Localizer<T>::Main()
 {
   unsigned int count = 0;
+
+  Timer timer;
 
   // main loop
   while(not stop_) {
@@ -82,12 +87,10 @@ void Localizer<T>::Main()
     count++;
 
     // Apply filters to incoming cloud, in scanner frame
-    auto t1 = std::chrono::high_resolution_clock::now();
+    timer.Start();
     input_filters_.apply(*cloud_ptr);
-    auto t2 = std::chrono::high_resolution_clock::now();
-    std::cout << "[Localizer] Input filters  took "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
-              << " milliseconds\n";
+    timer.Stop("[Localizer] Input filters");
+
     // Put cloud into robot frame
     (*cloud_ptr) = map_manager_ptr_->rigid_transformation_->compute(*cloud_ptr, T_robot_sensor);
 
@@ -99,23 +102,17 @@ void Localizer<T>::Main()
     }
 
     if (map_manager_ptr_->LocalMapNeedsUpdate()) {
-      t1 = std::chrono::high_resolution_clock::now();
+      timer.Start();
       icp_sequence_.setMap(map_manager_ptr_->GetUpdatedLocalMap());
-      t2 = std::chrono::high_resolution_clock::now();
-      std::cout << "[Localizer] Setting new map took "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
-                << " milliseconds\n";
+      timer.Stop("[Localizer] Setting new map");
     }
 
     // If we get here we have a local map, so we can perform ICP
 
     // Correct robot pose through ICP
-    t1 = std::chrono::high_resolution_clock::now();
+    timer.Start();
     Matrix corrected_T_world_robot = icp_sequence_(*cloud_ptr, T_world_robot);
-    t2 = std::chrono::high_resolution_clock::now();
-    std::cout << "[Localizer] ICP took "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
-              << " milliseconds\n";
+    timer.Stop("[Localizer] ICP");
 
     T overlap = icp_sequence_.errorMinimizer->getOverlap();
     std::cout << "[Localizer] Current overlap is " << overlap << " \n";
