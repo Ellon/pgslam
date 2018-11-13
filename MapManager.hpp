@@ -9,7 +9,7 @@ template<typename T>
 MapManager<T>::MapManager() :
   rigid_transformation_{PM::get().REG(Transformation).create("RigidTransformation")},
   overlap_range_min_{0.5},
-  overlap_range_max_{0.75},
+  overlap_range_max_{0.8},
   buffer_{3},
   local_map_needs_update_{false}
 {}
