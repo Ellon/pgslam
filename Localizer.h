@@ -22,6 +22,7 @@ public:
   using DataPointsFilters = typename PM::DataPointsFilters;
   using TransformationPtr = typename MapManager<T>::TransformationPtr;
   using MapManagerPtr = typename MapManager<T>::Ptr;
+  using Vertex = typename MapManager<T>::Vertex;
 
 public:
   struct InputData {
@@ -43,6 +44,9 @@ public:
   void Run();
   void Main();
 
+  std::pair<DP,bool> GetLocalMap();
+  std::pair<DP,bool> GetLocalMapInWorldFrame();
+
 private:
   //! 
   bool stop_ = {false};
@@ -60,6 +64,16 @@ private:
   ICPSequence icp_sequence_;
   //! Object to store shared data
   MapManagerPtr map_manager_ptr_;
+  //! Current reference keyframe at the world frame
+  Matrix T_world_refkf_;
+  //! Current robot pose at the current reference keyframe
+  Matrix T_refkf_robot_;
+  //! Current robot pose at world keyframe
+  Matrix T_world_robot_;
+  //! Last input robot pose at world keyframe, used to compute delta poses
+  Matrix last_input_T_world_robot_;
+  //! The graph vertex of the reference frame in the graph
+  Vertex refkf_vertex_;
 };
 
 } // pgslam
