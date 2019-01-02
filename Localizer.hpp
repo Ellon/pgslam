@@ -128,7 +128,7 @@ void Localizer<T>::Main()
 
     // TODO: Be sure all data races are properly handled!
 
-    // Reference keyframe pose may have changed by another thread
+    // Reference keyframe pose value may have changed by another thread
     if (last_refkf_reading_time < map_manager_ptr_->GetLastKeyframesUpdateTime()) {
       T_world_refkf_ = map_manager_ptr_->GetKeyframeTransform(refkf_vertex_);
       last_refkf_reading_time = std::chrono::high_resolution_clock::now();

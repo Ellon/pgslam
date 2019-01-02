@@ -160,6 +160,13 @@ template<typename T>
 bool MapManager<T>::FindBetterLocalMap(const Matrix & T_world_x)
 {
   std::cerr << "MapManager::FindBetterLocalMap not yet implemented!\n";
+  // Find closest vertex
+
+  // Search in the graph for N close vertices
+
+  // Build point cloud using keyframe clouds
+
+  // Check if we have enough overlap with the current cloud
 
   return false;
 }
