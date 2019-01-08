@@ -81,6 +81,7 @@ void MapManager<T>::AddFirstKeyframe(DPPtr cloud, const Matrix &T_world_kf)
   graph_[v].cloud_ptr = cloud;
   graph_[v].T_world_kf = T_world_kf;
   graph_[v].optimized_T_world_kf = T_world_kf;
+  graph_[v].update_time = std::chrono::high_resolution_clock::now();
   fixed_keyframe_ = v;
   local_map_composition_.clear();
   local_map_composition_.push_back(v);

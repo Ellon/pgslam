@@ -29,6 +29,7 @@ public:
     DPPtr cloud_ptr;
     Matrix T_world_kf;
     Matrix optimized_T_world_kf;
+    Time update_time;
   };
 
   struct Constraint {
