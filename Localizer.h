@@ -8,22 +8,17 @@
 #include <Eigen/Geometry>
 
 #include "MapManager.h"
+#include "types.h"
 
 namespace pgslam {
 
 template<typename T>
 class Localizer {
 public:
-  using PM = typename MapManager<T>::PM;
-  using DP = typename MapManager<T>::DP;
-  using DPPtr = typename MapManager<T>::DPPtr;
-  using Matrix = typename MapManager<T>::Matrix;
-  using ICPSequence = typename MapManager<T>::ICPSequence;
-  using DataPointsFilters = typename PM::DataPointsFilters;
-  using TransformationPtr = typename MapManager<T>::TransformationPtr;
   using MapManagerPtr = typename MapManager<T>::Ptr;
-  using Vertex = typename MapManager<T>::Vertex;
 
+  IMPORT_PGSLAM_TYPES(T)
+  
 public:
   struct InputData {
     unsigned long long int timestamp;

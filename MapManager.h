@@ -2,12 +2,12 @@
 #define PGSLAM_MAP_MANAGER_H
 
 #include <thread>
+#include <memory>
 #include <condition_variable>
 
 #include <boost/circular_buffer.hpp>
-#include <boost/graph/adjacency_list.hpp>
 
-#include <pointmatcher/PointMatcher.h>
+#include "types.h"
 
 namespace pgslam {
 
@@ -16,37 +16,7 @@ class MapManager {
 public:
   using Ptr = std::shared_ptr<MapManager<T>>;
 
-  using PM = PointMatcher<T>;
-  using DP = typename PM::DataPoints;
-  using DPPtr = std::shared_ptr<DP>;
-  using Matrix = typename PM::Matrix;
-  using CovMatrix = Eigen::Matrix<T, 6, 6 >;
-  using ICPSequence = typename PM::ICPSequence;
-  using TransformationPtr = std::shared_ptr<typename PM::Transformation>;
-  using Time = std::chrono::time_point<std::chrono::high_resolution_clock>;
-
-  struct Keyframe {
-    DPPtr cloud_ptr;
-    Matrix T_world_kf;
-    Matrix optimized_T_world_kf;
-    Time update_time;
-  };
-
-  struct Constraint {
-    enum Type
-    {
-      kOdomConstraint,
-      kLoopConstraint
-    };
-
-    Type type;
-    Matrix T_from_to;
-    CovMatrix cov_from_to;
-  };
-
-  using Graph = boost::adjacency_list<boost::listS, boost::setS, boost::bidirectionalS, Keyframe, Constraint>;
-  using Vertex = typename boost::graph_traits<Graph>::vertex_descriptor;
-  using Edge = typename boost::graph_traits<Graph>::edge_descriptor;
+  IMPORT_PGSLAM_TYPES(T)
 
 public:
   MapManager(/* args */);
