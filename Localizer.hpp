@@ -15,11 +15,17 @@ namespace pgslam {
 template<typename T>
 Localizer<T>::Localizer(MapManagerPtr map_manager_ptr) :
   stop_{false},
+  input_cloud_ptr_{nullptr},
+  rigid_transformation_{PM::get().REG(Transformation).create("RigidTransformation")},
   map_manager_ptr_{map_manager_ptr},
   T_world_refkf_{Matrix::Identity(4,4)},
   T_refkf_robot_{Matrix::Identity(4,4)},
   T_world_robot_{Matrix::Identity(4,4)},
-  last_input_T_world_robot_{Matrix::Identity(4,4)}
+  last_input_T_world_robot_{Matrix::Identity(4,4)},
+  next_local_map_composition_{3}, // TODO make this a parameter
+  local_map_{3}, // TODO make this a parameter
+  overlap_range_min_{0.5}, // TODO make this a parameter
+  overlap_range_max_{0.8} // TODO make this a parameter
 {}
 
 template<typename T>
@@ -71,7 +77,7 @@ void Localizer<T>::Main()
   unsigned int count = 0;
 
   // default constructor initializes tyme to epoch
-  typename MapManager<T>::Time last_refkf_reading_time;
+  // typename MapManager<T>::Time last_refkf_reading_time;
 
   Timer timer;
 
@@ -79,7 +85,6 @@ void Localizer<T>::Main()
   while(not stop_) {
 
     // Try to get new input data, waits if no data
-    DPPtr input_cloud_ptr;
     Matrix input_T_world_robot, input_T_robot_sensor;
     {
       std::unique_lock<std::mutex> lock(new_data_mutex_);
@@ -90,7 +95,7 @@ void Localizer<T>::Main()
       // Check for shutdown
       if (stop_) break;
       const InputData & data = new_data_buffer_.front();
-      input_cloud_ptr = data.cloud_ptr;
+      input_cloud_ptr_ = data.cloud_ptr;
       input_T_world_robot = data.T_world_robot;
       input_T_robot_sensor = data.T_robot_sensor;
       new_data_buffer_.pop_front();
@@ -103,56 +108,24 @@ void Localizer<T>::Main()
     // need to perform it here to have the observation direction vectors
     // pointing to the sensor.
     timer.Start();
-    input_filters_.apply(*input_cloud_ptr);
+    input_filters_.apply(*input_cloud_ptr_);
     timer.Stop("[Localizer] Input filters");
 
     // Put cloud into robot frame
-    (*input_cloud_ptr) = map_manager_ptr_->rigid_transformation_->compute(*input_cloud_ptr, input_T_robot_sensor);
+    (*input_cloud_ptr_) = rigid_transformation_->compute(*input_cloud_ptr_, input_T_robot_sensor);
 
     // Next block applies only for the first cloud (i.e. when icp has no map yet)
     if (not icp_sequence_.hasMap()) {
-      map_manager_ptr_->AddFirstKeyframe(input_cloud_ptr, input_T_world_robot);
-      map_manager_ptr_->RebuildLocalMap();
-      icp_sequence_.setMap(map_manager_ptr_->GetLocalMap());
-      // Store the descriptor of the current reference kf
-      refkf_vertex_ = map_manager_ptr_->GetReferenceKeyframeVertex();
+      // NOTE: this will set the icp_sequence_ map
+      ProcessFirstCloud(input_cloud_ptr_, input_T_world_robot);
       // Store transforms that will be needed on next iteration
-      T_world_robot_ = input_T_world_robot;
       last_input_T_world_robot_ = input_T_world_robot;
-      std::tie(T_world_refkf_, T_refkf_robot_) = map_manager_ptr_->GetTransformOnKeyframe(refkf_vertex_, input_T_world_robot);
-      // Store the time we reference kf was read
-      last_refkf_reading_time = std::chrono::high_resolution_clock::now();
       // Nothing more to do with this cloud
       continue;
     }
 
-    // TODO: Be sure all data races are properly handled!
-
-    // Reference keyframe pose value may have changed by another thread
-    if (last_refkf_reading_time < map_manager_ptr_->GetLastKeyframesUpdateTime()) {
-      T_world_refkf_ = map_manager_ptr_->GetKeyframeTransform(refkf_vertex_);
-      last_refkf_reading_time = std::chrono::high_resolution_clock::now();
-      T_world_robot_ = T_world_refkf_ * T_refkf_robot_;
-    }
-
-    // Local map may need to be rebuilt due to changes caused by another
-    // thread.
-    if (map_manager_ptr_->LocalMapNeedsRebuild()) {
-      timer.Start();
-      map_manager_ptr_->RebuildLocalMap();
-      icp_sequence_.setMap(map_manager_ptr_->GetLocalMap());
-      timer.Stop("[Localizer] Setting new map");
-
-      // NOTE: We consider that the only thread allowed to perform an
-      // operation that would change the list of keyframes composing the local
-      // map (by triggering a search for a better local map or by adding a new
-      // keyframe) is this thread. That is why we don't check if the reference
-      // keyframe vertex has changed here. This case is handled if and when
-      // the local map changes, after the ICP calls below.
-
-    }
-
-    // If we get here we have an updated local map, so we can perform ICP
+    // Perfom all updates needed before calling ICP
+    UpdateBeforeIcp();
 
     // Compute a delta transform that represents the movement of the robot
     // since last cloud was processed.
@@ -164,49 +137,149 @@ void Localizer<T>::Main()
 
     // Correct the input pose through ICP
     timer.Start();
-    T_refkf_robot_ = icp_sequence_(*input_cloud_ptr, input_T_refkf_robot);
+    T_refkf_robot_ = icp_sequence_(*input_cloud_ptr_, input_T_refkf_robot);
     T_world_robot_ = T_world_refkf_ * T_refkf_robot_;
     timer.Stop("[Localizer] ICP");
 
-    T overlap = icp_sequence_.errorMinimizer->getOverlap();
-    std::cout << "[Localizer] Current overlap is " << overlap << " \n";
-
-    // Here we inspect the robot pose and the overlap to take decisions about
-    // the current local map and the addition of keyframes
-    bool local_map_changed = false;
-    if (not map_manager_ptr_->HasEnoughOverlap(overlap)) {
-      bool found = map_manager_ptr_->FindBetterLocalMap(T_world_robot_);
-      if (not found) {
-        Matrix cov_T_refkf_robot = icp_sequence_.errorMinimizer->getCovariance();
-        map_manager_ptr_->AddNewKeyframe(refkf_vertex_, T_world_robot_, T_refkf_robot_, cov_T_refkf_robot, input_cloud_ptr);
-      }
-      // In either case (found better local map or added new kf) the local map has changed
-      local_map_changed = true;
-    } else if (refkf_vertex_ != map_manager_ptr_->GetClosestKeyframeVertex(T_world_robot_)) {
-      bool found = map_manager_ptr_->FindBetterLocalMap(T_world_robot_);
-      if (found) local_map_changed = true;
-    }
-
-    // Perform local map rebuild if needed.
-    if (local_map_changed) {
-      map_manager_ptr_->RebuildLocalMap();
-      icp_sequence_.setMap(map_manager_ptr_->GetLocalMap());
-
-      // The vertex reference keyframe may also have changed. If that's the
-      // case we need to update the robot pose wrt. the new reference
-      // keyframe, but without changing the robot pose wrt. world frame
-      if (refkf_vertex_ != map_manager_ptr_->GetReferenceKeyframeVertex()) {
-        refkf_vertex_ = map_manager_ptr_->GetReferenceKeyframeVertex();
-        std::tie(T_world_refkf_, T_refkf_robot_) = map_manager_ptr_->GetTransformOnKeyframe(refkf_vertex_, T_world_robot_);
-        last_refkf_reading_time = std::chrono::high_resolution_clock::now();
-      }
-    }
+    // Perfom all updates needed after the ICP call
+    UpdateAfterIcp();
 
     // Update last pose input for next iteration
     last_input_T_world_robot_ = input_T_world_robot;
 
   } // end main loop
 }
+
+template<typename T>
+void Localizer<T>::ProcessFirstCloud(DPPtr cloud, const Matrix &T_world_robot)
+{
+  auto graph_lock = map_manager_ptr_->GetGraphLock();
+
+  Vertex v = map_manager_ptr_->AddFirstKeyframe(cloud, T_world_robot);
+  // Update local map vertices
+  next_local_map_composition_.clear();
+  next_local_map_composition_.push_back(v);
+  // Build the first local map
+  // TODO: Better to do this out of the lock
+  local_map_.UpdateToNewComposition(map_manager_ptr_->GetGraph(), next_local_map_composition_);
+  // Set map on icp object
+  icp_sequence_.setMap(local_map_.Cloud());
+  // The first keyframe is coincident with the robot
+  T_world_refkf_ = T_world_robot;
+  T_refkf_robot_ = Matrix::Identity(4,4);
+  T_world_robot_ = T_world_robot;
+}
+
+
+template<typename T>
+void Localizer<T>::UpdateBeforeIcp()
+{
+  auto graph_lock = map_manager_ptr_->GetGraphLock();
+  const auto & graph = map_manager_ptr_->GetGraph();
+
+  // Update world robot pose if refkf pose was updated in the graph
+  if (local_map_.IsReferenceKeyframeOutdated(graph)) {
+    UpdateWorldRefkfPose(graph);
+    UpdateWorldRobotPose(graph);
+  }
+
+  if (not local_map_.HasSameComposition(next_local_map_composition_)) {
+    // Store old reference keyframe and vertex
+    Vertex old_refkf_vertex = local_map_.ReferenceVertex();
+    Time old_refkf_update_time = local_map_.ReferenceKeyframe().update_time;
+    // Update/Rebuild local map
+    local_map_.UpdateToNewComposition(graph, next_local_map_composition_);
+    // Update local robot pose if needed (different or updated refkf)
+    if (local_map_.ReferenceVertex() != old_refkf_vertex or 
+        local_map_.ReferenceKeyframe().update_time > old_refkf_update_time) {
+      UpdateWorldRefkfPose(graph);
+      UpdateLocalRobotPose(graph);
+    }
+
+  } else if (local_map_.IsOutdated(graph)) {
+    // Store old time
+    Time old_refkf_update_time = local_map_.ReferenceKeyframe().update_time;
+    // Update/Rebuild local map
+    local_map_.UpdateFromGraph(graph);
+    // Update local robot pose if updated refkf
+    if (local_map_.ReferenceKeyframe().update_time > old_refkf_update_time) {
+      UpdateWorldRefkfPose(graph);
+      UpdateLocalRobotPose(graph);
+    }
+  }
+}
+
+template<typename T>
+void Localizer<T>::UpdateAfterIcp()
+{
+  // Compute current overlap
+  T overlap = icp_sequence_.errorMinimizer->getOverlap();
+
+  auto graph_lock = map_manager_ptr_->GetGraphLock();
+
+  if (not HasEnoughOverlap(overlap)) {
+    LocalMapComposition composition_candidate = map_manager_ptr_->FindLocalMapComposition(local_map_.Capacity(), T_world_robot_);
+    if (not IsBetterComposition(composition_candidate)) {
+      Vertex v = map_manager_ptr_->AddNewKeyframe(
+        local_map_.ReferenceVertex(),
+        T_world_robot_,
+        T_refkf_robot_,
+        icp_sequence_.errorMinimizer->getCovariance(),
+        input_cloud_ptr_);
+      next_local_map_composition_.push_back(v);
+    } else {
+      next_local_map_composition_ = std::move(composition_candidate);
+    }
+
+    TODO_FIND_CLOSEST_VERTEX_ONLY_INSIDE_LOCAL_MAP_OR_NOT_QUESTION_MARK;
+  } else if (map_manager_ptr_->FindClosestVertex(T_world_robot_) != local_map_.ReferenceVertex()) {
+    LocalMapComposition composition_candidate = map_manager_ptr_->FindLocalMapComposition(local_map_.Capacity(), T_world_robot_);
+    if (not IsBetterComposition(composition_candidate))
+      next_local_map_composition_ = std::move(composition_candidate);
+  }
+}
+
+template<typename T>
+void Localizer<T>::UpdateWorldRefkfPose(const Graph & g)
+{
+  T_world_refkf_ = g[local_map_.ReferenceVertex()].T_world_kf;
+}
+
+template<typename T>
+void Localizer<T>::UpdateWorldRobotPose(const Graph & g)
+{
+  T_world_robot_ = g[local_map_.ReferenceVertex()].T_world_kf * T_refkf_robot_;
+}
+
+template<typename T>
+void Localizer<T>::UpdateLocalRobotPose(const Graph & g)
+{
+  T_refkf_robot_ = g[local_map_.ReferenceVertex()].T_world_kf.inverse() * T_world_robot_;
+}
+
+template<typename T>
+bool Localizer<T>::HasEnoughOverlap(T overlap)
+{
+  if (overlap < overlap_range_min_)
+    std::cerr << "[Localizer] WARNING: overlap below minimum overlap! (" << overlap << " < " << overlap_range_min_ << ")\n";
+
+  if (overlap < overlap_range_max_)
+    std::cerr << "[Localizer] overlap below threshold! (" << overlap << " < " << overlap_range_max_ << ")\n";
+  else
+    std::cerr << "[Localizer] overlap still ok! (" << overlap << " >= " << overlap_range_max_ << ")\n";
+
+  return (overlap >= overlap_range_max_);
+}
+
+template<typename T>
+bool Localizer<T>::IsBetterComposition(const LocalMapComposition comp)
+{
+  TODO_IMPLEMENT_THIS;
+  return false;
+}
+
+
+
 
 template<typename T>
 std::pair<typename Localizer<T>::DP, bool> Localizer<T>::GetLocalMap()
@@ -221,11 +294,10 @@ template<typename T>
 std::pair<typename Localizer<T>::DP, bool> Localizer<T>::GetLocalMapInWorldFrame()
 {
   if(icp_sequence_.hasMap())
-    return std::make_pair(map_manager_ptr_->rigid_transformation_->compute(icp_sequence_.getPrefilteredMap(), T_world_refkf_), true);
+    return std::make_pair(rigid_transformation_->compute(icp_sequence_.getPrefilteredMap(), T_world_refkf_), true);
   else
     return std::make_pair(DP(), false);
 }
-
 
 } // pgslam
 
