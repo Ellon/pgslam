@@ -27,6 +27,7 @@ struct Types
 
   // graph
   struct Keyframe {
+    size_t id;
     DPPtr cloud_ptr;
     Matrix T_world_kf;
     Matrix optimized_T_world_kf;
@@ -39,10 +40,15 @@ struct Types
       kOdomConstraint,
       kLoopConstraint
     };
-
+    //! Stores if the constraint comes from odometry or loop closing.
     Type type;
+    //! The measurement
     Matrix T_from_to;
+    //! The measurement error
     CovMatrix cov_from_to;
+
+    //! The weight used when looking for local map compositions
+    T weight;
   };
 
   using Graph = boost::adjacency_list<boost::listS, boost::setS, boost::bidirectionalS, Keyframe, Constraint>;

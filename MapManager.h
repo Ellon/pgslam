@@ -48,8 +48,8 @@ public:
 
   // Methods used by the Localizer
   Vertex AddFirstKeyframe(DPPtr cloud, const Matrix &T_world_kf);
-  LocalMapComposition FindLocalMapComposition(size_t size, const Matrix & T_world_x);
-  LocalMapComposition FindLocalMapComposition(size_t size, Vertex v);
+  LocalMapComposition FindLocalMapComposition(size_t capacity, const Matrix & T_world_x);
+  LocalMapComposition FindLocalMapComposition(size_t capacity, Vertex src);
   Vertex AddNewKeyframe(Vertex from, const Matrix &T_world_newkf, 
     const Matrix & meas_T_from_newkf, const CovMatrix & meas_cov_from_newkf, 
     DPPtr cloud_ptr);
@@ -75,6 +75,7 @@ public:
 
 private:
   T Distance(const Matrix & T1, const Matrix & T2);
+  T Weight(const Matrix & T_meas, const CovMatrix & cov_meas);
   // LocalMapComposition GetNextLocalMapComposition();
 
 private:
