@@ -159,6 +159,14 @@ bool LocalMap<T>::IsOutdated(const Graph & g) const
 }
 
 template<typename T>
+bool LocalMap<T>::IsReferenceKeyframeOutdated(const Graph & g) const
+{
+  // Refkf on the graph is more recent than reference keyframe on data_
+  return (g[data_.back().first].update_time > data_.back().second.update_time);
+}
+
+
+template<typename T>
 void LocalMap<T>::BuildCloudFromData()
 {
   // Add reference kf cloud
