@@ -88,7 +88,7 @@ void Localizer<T>::Main()
 {
   unsigned int count = 0;
 
-  // default constructor initializes tyme to epoch
+  // default constructor initializes time to epoch
   // typename MapManager<T>::Time last_refkf_reading_time;
 
   Timer timer;
@@ -136,7 +136,7 @@ void Localizer<T>::Main()
       continue;
     }
 
-    // Perfom all updates needed before calling ICP
+    // Perform all updates needed before calling ICP
     UpdateBeforeIcp();
 
     // Compute a delta transform that represents the movement of the robot
