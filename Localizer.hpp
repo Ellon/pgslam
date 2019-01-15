@@ -41,8 +41,20 @@ Localizer<T>::~Localizer()
 template<typename T>
 void Localizer<T>::SetLocalIcpConfig(const std::string &config_path)
 {
-  std::ifstream ifs(config_path);
-  icp_sequence_.loadFromYaml(ifs);
+  {
+    // Store the yaml as a string so it can be used to create other
+    // icp_sequence later.
+    std::ifstream ifs{config_path, std::ios::ate}; // open the file "at the end"
+    auto size = ifs.tellg();
+    icp_config_buffer_ = std::string(size, '\0');
+    ifs.seekg(0);
+    if(not ifs.read(&icp_config_buffer_[0], size))
+      throw std::runtime_error("[Localizer] Error buffering icp config into a string!");
+  }
+
+  // Build stream from buffered string
+  std::istringstream iss{icp_config_buffer_};
+  icp_sequence_.loadFromYaml(iss);
 }
 
 template<typename T>

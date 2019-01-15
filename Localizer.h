@@ -84,6 +84,8 @@ private:
   DataPointsFilters input_filters_;
   //! ICP object
   ICPSequence icp_sequence_;
+  //! Buffer to hold the icp configuration loaded from yaml file
+  std::string icp_config_buffer_;
 
   //! Object to store shared data (graph of keyframes)
   MapManagerPtr map_manager_ptr_;
