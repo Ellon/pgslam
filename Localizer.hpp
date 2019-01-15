@@ -24,8 +24,8 @@ Localizer<T>::Localizer(MapManagerPtr map_manager_ptr) :
   last_input_T_world_robot_{Matrix::Identity(4,4)},
   next_local_map_composition_{3}, // TODO make this a parameter
   local_map_{3}, // TODO make this a parameter
-  overlap_range_min_{0.5}, // TODO make this a parameter
-  overlap_range_max_{0.8} // TODO make this a parameter
+  overlap_threshold_{0.8}, // TODO make this a parameter
+  minimal_overlap_{0.5} // TODO make this a parameter
 {}
 
 template<typename T>
@@ -229,7 +229,7 @@ void Localizer<T>::UpdateAfterIcp()
 
   auto graph_lock = map_manager_ptr_->GetGraphLock();
 
-  if (not HasEnoughOverlap(overlap)) {
+  if (not IsOverlapEnough(overlap)) {
     LocalMapComposition composition_candidate = map_manager_ptr_->FindLocalMapComposition(local_map_.Capacity(), T_world_robot_);
     if (not IsBetterComposition(overlap, composition_candidate)) {
       Vertex v = map_manager_ptr_->AddNewKeyframe(
@@ -270,17 +270,12 @@ void Localizer<T>::UpdateLocalRobotPose(const Graph & g)
 }
 
 template<typename T>
-bool Localizer<T>::HasEnoughOverlap(T overlap)
+bool Localizer<T>::IsOverlapEnough(T overlap)
 {
-  if (overlap < overlap_range_min_)
-    std::cerr << "[Localizer] WARNING: overlap below minimum overlap! (" << overlap << " < " << overlap_range_min_ << ")\n";
+  if (overlap < minimal_overlap_)
+    std::cerr << "[Localizer] WARNING: overlap below minimal overlap! (" << overlap << " < " << minimal_overlap_ << ")\n";
 
-  if (overlap < overlap_range_max_)
-    std::cerr << "[Localizer] overlap below threshold! (" << overlap << " < " << overlap_range_max_ << ")\n";
-  else
-    std::cerr << "[Localizer] overlap still ok! (" << overlap << " >= " << overlap_range_max_ << ")\n";
-
-  return (overlap >= overlap_range_max_);
+  return (overlap >= overlap_threshold_);
 }
 
 template<typename T>
@@ -353,7 +348,7 @@ bool Localizer<T>::IsBetterComposition(T current_overlap, const LocalMapComposit
 
   T candidate_overlap = matchedPoints.weightedPointUsedRatio;
 
-  return HasEnoughOverlap(candidate_overlap) and (candidate_overlap > current_overlap);
+  return IsOverlapEnough(candidate_overlap) and (candidate_overlap > current_overlap);
 }
 
 template<typename T>

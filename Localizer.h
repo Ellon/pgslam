@@ -55,7 +55,7 @@ private:
   void UpdateWorldRefkfPose(const Graph & g);
   void UpdateWorldRobotPose(const Graph & g);
   void UpdateLocalRobotPose(const Graph & g);
-  bool HasEnoughOverlap(T overlap);
+  bool IsOverlapEnough(T overlap);
   bool IsBetterComposition(T current_overlap, const LocalMapComposition candidade_comp);
 
   // T ComputeCurrentOverlap();
@@ -108,10 +108,10 @@ private:
   //! Current local map structure. Contains a DP cloud.
   LocalMap local_map_;
 
-  //! Min value for overlap range. Below this value the user is informed of potential problems or program stops with error
-  T overlap_range_min_;
-  //! Max value for overlap range. This is used to decide if local maps are good enough.
-  T overlap_range_max_;
+  //! Threshold value used to decide if local maps have enough threshold.
+  T overlap_threshold_;
+  //! Minimal acceptable overlap value. Overlaps below this value indicates that the transform returned by ICP is of low quality.
+  T minimal_overlap_;
 
 };
 
