@@ -183,7 +183,8 @@ typename MapManager<T>::Vertex MapManager<T>::AddNewKeyframe(Vertex from, const 
   graph_[e].weight = Weight(meas_T_from_newkf, meas_cov_from_newkf);
 
 
-  TODO_ADD_INPUT_TO_LOOP_CLOSING_HERE;
+
+  // TODO_ADD_INPUT_TO_LOOP_CLOSING_HERE;
 
   std::cout << "[MapManager] Added keyframe\n";
 

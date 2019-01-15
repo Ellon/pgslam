@@ -247,7 +247,7 @@ void Localizer<T>::UpdateAfterIcp()
       next_local_map_composition_ = std::move(composition_candidate);
     }
 
-    TODO_FIND_CLOSEST_VERTEX_ONLY_INSIDE_LOCAL_MAP_OR_NOT_QUESTION_MARK;
+    // TODO_FIND_CLOSEST_VERTEX_ONLY_INSIDE_LOCAL_MAP_OR_NOT_QUESTION_MARK;
   } else if (map_manager_ptr_->FindClosestVertex(T_world_robot_) != local_map_.ReferenceVertex()) {
     LocalMapComposition composition_candidate = map_manager_ptr_->FindLocalMapComposition(local_map_.Capacity(), T_world_robot_);
     if (IsBetterComposition(overlap, composition_candidate))
