@@ -201,6 +201,8 @@ void Localizer<T>::UpdateBeforeIcp()
     Time old_refkf_update_time = local_map_.ReferenceKeyframe().update_time;
     // Update/Rebuild local map
     local_map_.UpdateToNewComposition(graph, next_local_map_composition_);
+    // Set map on icp object
+    icp_sequence_.setMap(local_map_.Cloud());
     // Update local robot pose if needed (different or updated refkf)
     if (local_map_.ReferenceVertex() != old_refkf_vertex or 
         local_map_.ReferenceKeyframe().update_time > old_refkf_update_time) {
@@ -213,6 +215,8 @@ void Localizer<T>::UpdateBeforeIcp()
     Time old_refkf_update_time = local_map_.ReferenceKeyframe().update_time;
     // Update/Rebuild local map
     local_map_.UpdateFromGraph(graph);
+    // Set map on icp object
+    icp_sequence_.setMap(local_map_.Cloud());
     // Update local robot pose if updated refkf
     if (local_map_.ReferenceKeyframe().update_time > old_refkf_update_time) {
       UpdateWorldRefkfPose(graph);
