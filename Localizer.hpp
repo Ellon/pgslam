@@ -353,7 +353,7 @@ bool Localizer<T>::IsBetterComposition(T current_overlap, const LocalMapComposit
 
   T candidate_overlap = matchedPoints.weightedPointUsedRatio;
 
-  return (candidate_overlap > current_overlap) and HasEnoughOverlap(candidate_overlap);
+  return HasEnoughOverlap(candidate_overlap) and (candidate_overlap > current_overlap);
 }
 
 template<typename T>
