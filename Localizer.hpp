@@ -88,9 +88,6 @@ void Localizer<T>::Main()
 {
   unsigned int count = 0;
 
-  // default constructor initializes time to epoch
-  // typename MapManager<T>::Time last_refkf_reading_time;
-
   Timer timer;
 
   // main loop

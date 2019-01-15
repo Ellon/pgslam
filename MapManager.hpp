@@ -15,61 +15,12 @@ using boost::vertices;
 
 
 template<typename T>
-MapManager<T>::MapManager()// :
-  // rigid_transformation_{PM::get().REG(Transformation).create("RigidTransformation")},
-  // overlap_range_min_{0.5},
-  // overlap_range_max_{0.8},
-  // buffer_{3},
-  // local_map_{3},
-  // next_local_map_composition_{3}
-  // local_map_needs_update_{false},
+MapManager<T>::MapManager()
 {}
 
 template<typename T>
 MapManager<T>::~MapManager()
 {}
-
-// template<typename T>
-// void MapManager<T>::SetLocalizer(LocalizerPtr localizer_ptr)
-// {
-//   localizer_wptr_ = localizer_ptr;
-// }
-
-// template<typename T>
-// MapManager<T>::LocalMapComposition MapManager<T>::GetNextLocalMapComposition()
-// {
-//   std::unique_lock<std::mutex> lock(graph_mutex_);
-//   return next_local_map_composition.ResetFromGraph(graph_, next_local_map_vertices_);
-// }
-
-// template<typename T>
-// bool MapManager<T>::LocalMapNeedsRebuild()
-// {
-//   return local_map_.IsOutdated(GetNextLocalMapComposition());
-// }
-
-// template<typename T>
-// void MapManager<T>::RebuildLocalMap()
-// {
-//   if (next_local_map_vertices_.empty())
-//     throw std::runtime_error("[MapManager] No local maps keyframes when trying to update local map");
-
-//   local_map_.Update(GetNextLocalMapComposition());
-
-//   std::cout << "[MapManager] Rebuilt local map\n";
-// }
-
-// template<typename T>
-// typename MapManager<T>::DP MapManager<T>::GetLocalMap()
-// {
-//   return local_map_.Cloud();
-// }
-
-// template<typename T>
-// typename MapManager<T>::DP MapManager<T>::GetLocalMapInWorldFrame()
-// {
-//   return local_map_.CloudInWorldFrame();
-// }
 
 template<typename T>
 std::unique_lock<std::mutex> MapManager<T>::GetGraphLock()
@@ -191,95 +142,6 @@ typename MapManager<T>::Vertex MapManager<T>::AddNewKeyframe(Vertex from, const 
   return newkf;
 }
 
-
-// template<typename T>
-// void MapManager<T>::AddKeyframeBasedOnOverlap(T overlap, DPPtr cloud, const Matrix &T_world_kf)
-// {
-//   std::unique_lock<std::mutex> lock(graph_mutex_);
-//
-//   if (overlap < overlap_range_max_) {
-//     Vertex v = add_vertex(graph_);
-//     graph_[v].cloud_ptr = cloud;
-//     graph_[v].T_world_kf = T_world_kf;
-//     graph_[v].optimized_T_world_kf = T_world_kf;
-//     next_local_map_vertices_.push_back(v);
-  
-//     // buffer_.push_back(std::make_pair(cloud, T_world_kf));
-//     // local_map_needs_update_ = true;
-//     last_next_local_map_vertices_update_time_ = std::chrono::high_resolution_clock::now();
-//     std::cout << "[MapManager] Added keyframe\n";
-//   }
-//   if (overlap < overlap_range_min_)
-//     std::cerr << "[MapManager] Warning: adding keyframe with overlap below minimum overlap\n";
-// }
-
-// template<typename T>
-// typename MapManager<T>::Matrix MapManager<T>::GetKeyframeTransform(Vertex v)
-// {
-//   std::unique_lock<std::mutex> lock(graph_mutex_);
-//   return graph_[v].optimized_T_world_kf;
-// }
-
-// template<typename T>
-// std::pair<typename MapManager<T>::Matrix, typename MapManager<T>::Matrix> MapManager<T>::GetTransformOnKeyframe(Vertex v, const Matrix & T_world_x)
-// {
-//   Matrix T_world_kf;
-//   {
-//     std::unique_lock<std::mutex> lock(graph_mutex_);
-//     T_world_kf = graph_[v].optimized_T_world_kf; 
-//   }
-//   Matrix T_kf_x = T_world_kf.inverse() * T_world_x;
-//   return std::make_pair(T_world_kf, T_kf_x);
-// }
-
-// template<typename T>
-// typename MapManager<T>::Matrix MapManager<T>::GetReferenceKeyframeTransform()
-// {
-//   return local_map_.ReferenceKeyframe().optimized_T_world_kf;
-// }
-
-// template<typename T>
-// typename MapManager<T>::Vertex MapManager<T>::GetReferenceKeyframeVertex()
-// {
-//   return local_map_.ReferenceVertex();
-// }
-
-// template<typename T>
-// typename MapManager<T>::Time MapManager<T>::GetLastKeyframesUpdateTime()
-// {
-//   return last_kfs_update_time_;
-// }
-
-// template<typename T>
-// bool MapManager<T>::HasEnoughOverlap(T overlap)
-// {
-//   if (overlap < overlap_range_min_)
-//     std::cerr << "[MapManager] WARNING: overlap below minimum overlap! (" << overlap << " < " << overlap_range_min_ << ")\n";
-
-//   if (overlap < overlap_range_max_)
-//     std::cerr << "[MapManager] overlap below threshold! (" << overlap << " < " << overlap_range_max_ << ")\n";
-//   else
-//     std::cerr << "[MapManager] overlap still ok! (" << overlap << " >= " << overlap_range_max_ << ")\n";
-
-//   return (overlap >= overlap_range_max_);
-// }
-
-// template<typename T>
-// bool MapManager<T>::FindBetterLocalMap(const Matrix & T_world_x)
-// {
-//   std::cerr << "MapManager::FindBetterLocalMap not yet implemented!\n";
-//   // Find closest vertex
-
-//   // Search in the graph for N close vertices
-
-//   // Build point cloud using keyframe clouds
-
-//   // Check if we have enough overlap with the current cloud
-
-//   return false;
-// }
-
-
 template<typename T>
 typename MapManager<T>::Vertex MapManager<T>::FindClosestVertex(const Matrix & T_world_x)
 {
@@ -316,86 +178,6 @@ T MapManager<T>::Weight(const Matrix & T_meas, const CovMatrix & cov_meas)
 {
   return T_meas.col(3).head(3).norm();
 }
-
-
-// template<typename T>
-// void MapManager<T>::UpdateLocalizerBeforeIcp()
-// {
-//   if (auto localizer_ptr = localizer_wptr_.lock()) {
-
-//     std::unique_lock<std::mutex> lock(graph_mutex_);
-
-//     // Update world robot pose if refkf pose was updated in the graph
-//     if (local_map_.IsReferenceKeyframeOutdated(graph_))
-//       localizer_ptr->UpdateWorldRobotPose(graph_);
-
-//     if (not local_map_.HasSameComposition(next_local_map_composition_)) {
-//       // Store old reference keyframe and vertex
-//       Vertex old_refkf_vertex = local_map_.ReferenceVertex();
-//       Time old_refkf_update_time = local_map_.ReferenceKeyframe().update_time;
-//       // Update/Rebuild local map
-//       local_map_.UpdateToNewComposition(graph_, next_local_map_composition_);
-//       // Update local robot pose if needed (different or updated refkf)
-//       if (local_map_.ReferenceVertex() != old_refkf_vertex or 
-//           local_map_.ReferenceKeyframe().update_time > old_refkf_update_time)
-//         localizer_ptr->UpdateLocalRobotPose();
-
-//     } else if (local_map_.IsOutdated(graph_)) {
-//       // Store old time
-//       Time old_refkf_update_time = local_map_.ReferenceKeyframe().update_time;
-//       // Update/Rebuild local map
-//       local_map_.UpdateFromGraph(graph_);
-//       // Update local robot pose if updated refkf
-//       if (local_map_.ReferenceKeyframe().update_time > old_refkf_update_time)
-//         localizer_ptr->UpdateLocalRobotPose();
-//     }
-
-//   } else {
-//     std::cerr << "[MapManager] Weak pointer to Localizer is expired when updating before ICP" << std::endl;
-//   }
-// }
-
-// template<typename T>
-// void MapManager<T>::UpdateLocalizerAfterIcp()
-// {
-//   if (auto localizer_ptr = localizer_wptr_.lock()) {
-//     T overlap = localizer_ptr->ComputeCurrentOverlap();
-//     std::cout << "[Localizer] Current overlap is " << overlap << " \n";
-
-//     if (not HasEnoughOverlap(overlap)) {
-//       LocalMapComposition better_composition;
-//       bool found = false;
-//       std::tie(better_composition, found) = FindBetterLocalMapComposition(localizer_ptr->GetWorldRobotPose());
-//       if (not found) {
-//         Matrix cov_T_refkf_robot = localizer_ptr->GetCurrentCovariance();
-//         AddNewKeyframe(refkf_vertex_,
-//           T_world_robot_,
-//           T_refkf_robot_,
-//           cov_T_refkf_robot,
-//           input_cloud_ptr);
-//         TODO_ADD_INPUT_TO_LOOP_CLOSING_HERE;
-//       } else {
-//         next_local_map_composition_ = better_composition;
-//       }
-
-//     } else if (GetClosestVertex(localizer_ptr->GetWorldRobotPose()) != local_map_.ReferenceVertex()) {
-//       LocalMapComposition better_composition;
-//       bool found = false;
-//       std::tie(better_composition, found) = FindBetterLocalMapComposition(localizer_ptr->GetWorldRobotPose());
-//       if (found)
-//         next_local_map_composition_ = better_composition;
-//     }
-
-//   } else {
-//     std::cerr << "[MapManager] Weak pointer to Localizer is expired when updating before ICP" << std::endl;
-//   }
-// }
-
-// template<typename T>
-// std::unique_lock<std::mutex> MapManager<T>::LocalMapLock()
-// {
-//   return std::unique_lock<std::mutex>{local_map_mutex_};
-// }
 
 } // pgslam
 

@@ -58,10 +58,6 @@ private:
   bool IsOverlapEnough(T overlap);
   bool IsBetterComposition(T current_overlap, const LocalMapComposition candidade_comp);
 
-  // T ComputeCurrentOverlap();
-  // Matrix GetWorldRobotPose();
-  // Matrix GetCurrentCovariance();
-
 private:
   // Variables used to input data in the thread
   //! Variable used to stop the thread
@@ -100,8 +96,6 @@ private:
 
   //! Last input robot pose at world keyframe, used to compute delta poses
   Matrix last_input_T_world_robot_;
-  //! The graph vertex of the reference frame in the graph
-  // Vertex refkf_vertex_;
 
   //! Buffer of vertexes that compose the next local map.
   LocalMapComposition next_local_map_composition_;
