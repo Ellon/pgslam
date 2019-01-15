@@ -231,7 +231,7 @@ void Localizer<T>::UpdateAfterIcp()
 
   if (not HasEnoughOverlap(overlap)) {
     LocalMapComposition composition_candidate = map_manager_ptr_->FindLocalMapComposition(local_map_.Capacity(), T_world_robot_);
-    if (not IsBetterComposition(composition_candidate)) {
+    if (not IsBetterComposition(overlap, composition_candidate)) {
       Vertex v = map_manager_ptr_->AddNewKeyframe(
         local_map_.ReferenceVertex(),
         T_world_robot_,
@@ -246,7 +246,7 @@ void Localizer<T>::UpdateAfterIcp()
     TODO_FIND_CLOSEST_VERTEX_ONLY_INSIDE_LOCAL_MAP_OR_NOT_QUESTION_MARK;
   } else if (map_manager_ptr_->FindClosestVertex(T_world_robot_) != local_map_.ReferenceVertex()) {
     LocalMapComposition composition_candidate = map_manager_ptr_->FindLocalMapComposition(local_map_.Capacity(), T_world_robot_);
-    if (not IsBetterComposition(composition_candidate))
+    if (not IsBetterComposition(overlap, composition_candidate))
       next_local_map_composition_ = std::move(composition_candidate);
   }
 }
@@ -284,14 +284,77 @@ bool Localizer<T>::HasEnoughOverlap(T overlap)
 }
 
 template<typename T>
-bool Localizer<T>::IsBetterComposition(const LocalMapComposition comp)
+bool Localizer<T>::IsBetterComposition(T current_overlap, const LocalMapComposition candidade_comp)
 {
-  TODO_IMPLEMENT_THIS;
-  return false;
+  // The same composition is not a better composition
+  if (local_map_.HasSameComposition(candidade_comp))
+    return false;
+
+  // If composition is different, then we need to build a local map from it
+  // and check if this local map has enough overlap with the current cloud
+
+  LocalMap candidate_local_map{map_manager_ptr_->GetGraph(), candidade_comp};
+
+  // Normally the overlap computed by ICP object's getOverlap() uses
+  // ErrorMinimizer's variable lastErrorElements that is updated every time we
+  // compute the transformation that minimizes the error. If we would follow
+  // this path here we would need to perform an ICP between the candidate map
+  // and the current input cloud, to then be able to compute the overlap. This
+  // is too much if we want only the overlap.
+  //
+  // The (hackish) way to avoid this is to perform here the same steps ICP
+  // would do but only until we get the error elements, then we use the error
+  // elements to compute the overlap. This is not the best solution because
+  // libpointmatcher's ICP code may evolve in the future, mismatching the
+  // lines below.
+
+  using ICP = typename PM::ICP;
+  using Matches = typename PM::Matches;
+  using OutlierWeights = typename PM::OutlierWeights;
+  using ErrorElements = typename PM::ErrorMinimizer::ErrorElements;
+
+  ICP temp_icp;
+  std::istringstream iss{icp_config_buffer_};
+  temp_icp.loadFromYaml(iss);
+
+  DP reference(candidate_local_map.CloudInWorldFrame());
+  temp_icp.referenceDataPointsFilters.init();
+  temp_icp.referenceDataPointsFilters.apply(reference);
+
+  temp_icp.matcher->init(reference);
+
+  DP reading(*input_cloud_ptr_);
+  temp_icp.readingDataPointsFilters.init();
+  temp_icp.readingDataPointsFilters.apply(reading);
+
+  reading = rigid_transformation_->compute(reading, T_world_robot_);
+
+  temp_icp.readingStepDataPointsFilters.init();
+  temp_icp.readingStepDataPointsFilters.apply(reading);
+
+  const Matches matches(temp_icp.matcher->findClosests(reading));
+
+  const OutlierWeights outlierWeights(temp_icp.outlierFilters.compute(reading, reference, matches));
+
+  ErrorElements matchedPoints(reading, reference, outlierWeights, matches);
+
+  // Here there's another hack going on. To compute the overlap from ICP's
+  // ErrorMinimizer object we would need to either:
+  //
+  //   1) have set it's lastErrorElements variable by performing the ICP, but
+  //   we don't want to do that here just to get the overlap;
+  //
+  //   2) set it by hand or inform the error elements by argument to
+  //   ErrorMinimizer::getOverlap(), but the current libpointmatcher interface
+  //   does not allow that and we don't want to change it (yet...).
+  //
+  // Thus as a workaround we're simply using the weightedPointUsedRatio field,
+  // that is the default value used by ErrorMinimizer base class.
+
+  T candidate_overlap = matchedPoints.weightedPointUsedRatio;
+
+  return (candidate_overlap > current_overlap) and HasEnoughOverlap(candidate_overlap);
 }
-
-
-
 
 template<typename T>
 std::pair<typename Localizer<T>::DP, bool> Localizer<T>::GetLocalMap()

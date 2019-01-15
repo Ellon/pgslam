@@ -56,7 +56,7 @@ private:
   void UpdateWorldRobotPose(const Graph & g);
   void UpdateLocalRobotPose(const Graph & g);
   bool HasEnoughOverlap(T overlap);
-  bool IsBetterComposition(const LocalMapComposition comp);
+  bool IsBetterComposition(T current_overlap, const LocalMapComposition candidade_comp);
 
   // T ComputeCurrentOverlap();
   // Matrix GetWorldRobotPose();

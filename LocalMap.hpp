@@ -35,6 +35,14 @@ LocalMap<T>::LocalMap(size_t capacity)
 {}
 
 template<typename T>
+LocalMap<T>::LocalMap(const Graph & g, const CompositionZ & comp)
+ : data_{g, comp},
+   rigid_transformation_{PM::get().REG(Transformation).create("RigidTransformation")}
+{
+  BuildCloudFromData();
+}
+
+template<typename T>
 size_t LocalMap<T>::Capacity()
 {
   return data_.capacity();

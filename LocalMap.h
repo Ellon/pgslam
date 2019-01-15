@@ -21,6 +21,7 @@ public:
 
 public:
   LocalMap(size_t capacity);
+  LocalMap(const Graph & g, const CompositionZ & comp);
 
   size_t Capacity();
 
