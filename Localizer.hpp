@@ -122,9 +122,8 @@ void Localizer<T>::Main()
     // Put cloud into robot frame
     (*input_cloud_ptr_) = rigid_transformation_->compute(*input_cloud_ptr_, input_T_robot_sensor);
 
-    // Next block applies only for the first cloud (i.e. when icp has no map yet)
-    if (not icp_sequence_.hasMap()) {
-      // NOTE: this will set the icp_sequence_ map
+    // Next block applies only for the first cloud (i.e. when there is no map yet)
+    if (not local_map_.HasCloud()) {
       ProcessFirstCloud(input_cloud_ptr_, input_T_world_robot);
       // Store transforms that will be needed on next iteration
       last_input_T_world_robot_ = input_T_world_robot;
@@ -149,7 +148,7 @@ void Localizer<T>::Main()
     T_world_robot_ = local_map_.ReferenceKeyframe().optimized_T_world_kf * T_refkf_robot_;
     timer.Stop("[Localizer] ICP");
 
-    // Perfom all updates needed after the ICP call
+    // Perform all updates needed after the ICP call
     UpdateAfterIcp();
 
     // Update last pose input for next iteration
