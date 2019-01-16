@@ -344,8 +344,8 @@ bool Localizer<T>::IsBetterComposition(T current_overlap, const LocalMapComposit
 template<typename T>
 std::pair<typename Localizer<T>::DP, bool> Localizer<T>::GetLocalMap()
 {
-  if(icp_sequence_.hasMap())
-    return std::make_pair(icp_sequence_.getPrefilteredMap(), true);
+  if(local_map_.HasCloud())
+    return std::make_pair(local_map_.Cloud(), true);
   else
     return std::make_pair(DP(), false);
 }
@@ -353,8 +353,8 @@ std::pair<typename Localizer<T>::DP, bool> Localizer<T>::GetLocalMap()
 template<typename T>
 std::pair<typename Localizer<T>::DP, bool> Localizer<T>::GetLocalMapInWorldFrame()
 {
-  if(icp_sequence_.hasMap())
-    return std::make_pair(rigid_transformation_->compute(icp_sequence_.getPrefilteredMap(), local_map_.ReferenceKeyframe().optimized_T_world_kf), true);
+  if(local_map_.HasCloud())
+    return std::make_pair(local_map_.CloudInWorldFrame(), true);
   else
     return std::make_pair(DP(), false);
 }

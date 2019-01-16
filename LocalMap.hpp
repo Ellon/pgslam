@@ -77,6 +77,12 @@ void LocalMap<T>::UpdateToNewComposition(const Graph & g, const CompositionZ & c
 }
 
 template<typename T>
+bool LocalMap<T>::HasCloud() const
+{
+  return (cloud_.features.cols() != 0);
+}
+
+template<typename T>
 const typename LocalMap<T>::DP & LocalMap<T>::Cloud() const
 {
   return cloud_;

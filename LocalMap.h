@@ -29,6 +29,7 @@ public:
   void UpdateFromDataBuffer(const DataBuffer & db);
   void UpdateToNewComposition(const Graph & g, const CompositionZ & comp);
 
+  bool HasCloud() const;
   const DP & Cloud() const;
   DP CloudInWorldFrame() const;
 
