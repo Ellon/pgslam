@@ -24,6 +24,8 @@ struct Types
   using ICPSequence = typename PM::ICPSequence;
   using TransformationPtr = std::shared_ptr<typename PM::Transformation>;
   using DataPointsFilters = typename PM::DataPointsFilters;
+  using Label = typename DP::Label;
+  using Labels = typename DP::Labels;
 
   // graph
   struct Keyframe {
@@ -70,6 +72,8 @@ struct Types
   using TransformationPtr = typename pgslam::Types<TYPE>::TransformationPtr; \
   using DataPointsFilters = typename pgslam::Types<TYPE>::DataPointsFilters; \
   using Keyframe = typename pgslam::Types<TYPE>::Keyframe;                   \
+  using Label = typename pgslam::Types<TYPE>::Label;                         \
+  using Labels = typename pgslam::Types<TYPE>::Labels;                       \
   using Constraint = typename pgslam::Types<TYPE>::Constraint;               \
   using Graph = typename pgslam::Types<TYPE>::Graph;                         \
   using Vertex = typename pgslam::Types<TYPE>::Vertex;                       \
