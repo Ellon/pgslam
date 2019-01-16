@@ -204,7 +204,7 @@ void Localizer<T>::UpdateBeforeIcp()
     if (local_map_.ReferenceVertex() != old_refkf_vertex or 
         local_map_.ReferenceKeyframe().update_time > old_refkf_update_time) {
       UpdateWorldRefkfPose(graph);
-      UpdateLocalRobotPose(graph);
+      UpdateRefkfRobotPose(graph);
     }
 
   } else if (local_map_.IsOutdated(graph)) {
@@ -217,7 +217,7 @@ void Localizer<T>::UpdateBeforeIcp()
     // Update local robot pose if updated refkf
     if (local_map_.ReferenceKeyframe().update_time > old_refkf_update_time) {
       UpdateWorldRefkfPose(graph);
-      UpdateLocalRobotPose(graph);
+      UpdateRefkfRobotPose(graph);
     }
   }
 }
@@ -259,15 +259,15 @@ void Localizer<T>::UpdateWorldRefkfPose(const Graph & g)
 }
 
 template<typename T>
-void Localizer<T>::UpdateWorldRobotPose(const Graph & g)
+void Localizer<T>::UpdateRefkfRobotPose(const Graph & g)
 {
-  T_world_robot_ = g[local_map_.ReferenceVertex()].T_world_kf * T_refkf_robot_;
+  T_refkf_robot_ = g[local_map_.ReferenceVertex()].T_world_kf.inverse() * T_world_robot_;
 }
 
 template<typename T>
-void Localizer<T>::UpdateLocalRobotPose(const Graph & g)
+void Localizer<T>::UpdateWorldRobotPose(const Graph & g)
 {
-  T_refkf_robot_ = g[local_map_.ReferenceVertex()].T_world_kf.inverse() * T_world_robot_;
+  T_world_robot_ = g[local_map_.ReferenceVertex()].T_world_kf * T_refkf_robot_;
 }
 
 template<typename T>

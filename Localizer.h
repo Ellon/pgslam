@@ -53,8 +53,8 @@ private:
   void UpdateAfterIcp();
 
   void UpdateWorldRefkfPose(const Graph & g);
+  void UpdateRefkfRobotPose(const Graph & g);
   void UpdateWorldRobotPose(const Graph & g);
-  void UpdateLocalRobotPose(const Graph & g);
   bool IsOverlapEnough(T overlap);
   bool IsBetterComposition(T current_overlap, const LocalMapComposition candidade_comp);
 
