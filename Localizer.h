@@ -22,7 +22,7 @@ public:
 
   using LocalMap = pgslam::LocalMap<T>;
   using LocalMapDataBuffer = typename pgslam::LocalMap<T>::DataBuffer;
-  using LocalMapComposition = typename pgslam::LocalMap<T>::CompositionZ;
+  using LocalMapComposition = typename pgslam::LocalMap<T>::Composition;
 
 public:
   struct InputData {

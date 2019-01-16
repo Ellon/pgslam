@@ -20,7 +20,7 @@ LocalMap<T>::DataBuffer::DataBuffer(size_t capacity)
 }
 
 template<typename T>
-LocalMap<T>::DataBuffer::DataBuffer(const Graph & g, const CompositionZ & comp)
+LocalMap<T>::DataBuffer::DataBuffer(const Graph & g, const Composition & comp)
 {
   this->set_capacity(comp.capacity());
   for (auto v : comp)
@@ -35,7 +35,7 @@ LocalMap<T>::LocalMap(size_t capacity)
 {}
 
 template<typename T>
-LocalMap<T>::LocalMap(const Graph & g, const CompositionZ & comp)
+LocalMap<T>::LocalMap(const Graph & g, const Composition & comp)
  : data_{g, comp},
    rigid_transformation_{PM::get().REG(Transformation).create("RigidTransformation")}
 {
@@ -66,7 +66,7 @@ void LocalMap<T>::UpdateFromDataBuffer(const DataBuffer & data)
 }
 
 template<typename T>
-void LocalMap<T>::UpdateToNewComposition(const Graph & g, const CompositionZ & comp)
+void LocalMap<T>::UpdateToNewComposition(const Graph & g, const Composition & comp)
 {
   data_.clear();
   data_.set_capacity(comp.capacity());
@@ -95,9 +95,9 @@ typename LocalMap<T>::DP LocalMap<T>::CloudInWorldFrame() const
 }
 
 template<typename T>
-typename LocalMap<T>::CompositionZ LocalMap<T>::Composition() const
+typename LocalMap<T>::Composition LocalMap<T>::Composition() const
 {
-  CompositionZ comp{data_.capacity()};
+  Composition comp{data_.capacity()};
   for (auto & e : data_)
     comp.push_back(e.first);
 
@@ -117,7 +117,7 @@ const typename LocalMap<T>::Keyframe & LocalMap<T>::ReferenceKeyframe() const
 }
 
 template<typename T>
-bool LocalMap<T>::HasSameVertexSet(const CompositionZ & comp) const
+bool LocalMap<T>::HasSameVertexSet(const Composition & comp) const
 {
   // Since both should be unique we can test the size
   if (data_.size() != comp.size())
@@ -150,14 +150,14 @@ bool LocalMap<T>::HasSameVertexSet(const CompositionZ & comp) const
 }
 
 template<typename T>
-bool LocalMap<T>::HasSameReferenceVertex(const CompositionZ & comp) const
+bool LocalMap<T>::HasSameReferenceVertex(const Composition & comp) const
 {
   // Reference keyframe is the last element of the circular buffer
   return data_.back().first == comp.back();
 }
 
 template<typename T>
-bool LocalMap<T>::HasSameComposition(const CompositionZ & comp) const
+bool LocalMap<T>::HasSameComposition(const Composition & comp) const
 {
   return (HasSameReferenceVertex(comp) and HasSameVertexSet(comp));
 }

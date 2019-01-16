@@ -22,7 +22,7 @@ public:
 
   IMPORT_PGSLAM_TYPES(T)
 
-  using LocalMapComposition = typename pgslam::LocalMap<T>::CompositionZ;
+  using LocalMapComposition = typename pgslam::LocalMap<T>::Composition;
 
 public:
   MapManager(/* args */);
