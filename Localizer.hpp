@@ -221,7 +221,7 @@ template<typename T>
 void Localizer<T>::UpdateAfterIcp()
 {
   // Compute current overlap
-  T overlap = icp_sequence_.errorMinimizer->getOverlap();
+  T overlap = ComputeOverlap();
 
   auto graph_lock = map_manager_ptr_->GetGraphLock();
 
@@ -260,37 +260,32 @@ void Localizer<T>::UpdateWorldRobotPose(const Graph & g)
 }
 
 template<typename T>
-bool Localizer<T>::IsOverlapEnough(T overlap)
+T Localizer<T>::ComputeOverlap()
 {
-  if (overlap < minimal_overlap_)
-    std::cerr << "[Localizer] WARNING: overlap below minimal overlap! (" << overlap << " < " << minimal_overlap_ << ")\n";
-
-  return (overlap >= overlap_threshold_);
+  return icp_sequence_.errorMinimizer->getOverlap();
 }
 
 template<typename T>
-bool Localizer<T>::IsBetterComposition(T current_overlap, const LocalMapComposition candidade_comp)
+T Localizer<T>::ComputeOverlap(const LocalMapComposition comp)
 {
-  // The same composition is not a better composition
-  if (local_map_.HasSameComposition(candidade_comp))
-    return false;
+  // To compute the overlap with a arbitrary composition, we need to build a
+  // local map from it and check if this local map has enough overlap with the
+  // current cloud
 
-  // If composition is different, then we need to build a local map from it
-  // and check if this local map has enough overlap with the current cloud
+  LocalMap temp_local_map{map_manager_ptr_->GetGraph(), comp};
 
-  LocalMap candidate_local_map{map_manager_ptr_->GetGraph(), candidade_comp};
-
-  // Normally the overlap computed by ICP object's getOverlap() uses
-  // ErrorMinimizer's variable lastErrorElements that is updated every time we
-  // compute the transformation that minimizes the error. If we would follow
-  // this path here we would need to perform an ICP between the candidate map
-  // and the current input cloud, to then be able to compute the overlap. This
-  // is too much if we want only the overlap.
+  // We use libpointmatcher's ErrorMinimizer::getOverlap() method to compute
+  // the overlap after an ICP (see Localizer<T>::ComputeOverlap()). It uses
+  // ErrorMinimizer's internal variable lastErrorElements that is updated
+  // every time we compute the transformation that minimizes the error. If we
+  // would follow this path here we would need to perform an ICP between the
+  // candidate map and the current input cloud, to then be able to compute the
+  // overlap. This is too much if we want only the overlap.
   //
   // The (hackish) way to avoid this is to perform here the same steps ICP
   // would do but only until we get the error elements, then we use the error
   // elements to compute the overlap. This is not the best solution because
-  // libpointmatcher's ICP code may evolve in the future, mismatching the
+  // libpointmatcher's ICP code may evolve in the future, diverging from the
   // lines below.
 
   using ICP = typename PM::ICP;
@@ -302,7 +297,7 @@ bool Localizer<T>::IsBetterComposition(T current_overlap, const LocalMapComposit
   std::istringstream iss{icp_config_buffer_};
   temp_icp.loadFromYaml(iss);
 
-  DP reference(candidate_local_map.CloudInWorldFrame());
+  DP reference(temp_local_map.CloudInWorldFrame());
   temp_icp.referenceDataPointsFilters.init();
   temp_icp.referenceDataPointsFilters.apply(reference);
 
@@ -336,7 +331,29 @@ bool Localizer<T>::IsBetterComposition(T current_overlap, const LocalMapComposit
   // Thus as a workaround we're simply using the weightedPointUsedRatio field,
   // that is the default value used by ErrorMinimizer base class.
 
-  T candidate_overlap = matchedPoints.weightedPointUsedRatio;
+  return matchedPoints.weightedPointUsedRatio;
+}
+
+template<typename T>
+bool Localizer<T>::IsOverlapEnough(T overlap)
+{
+  if (overlap < minimal_overlap_)
+    std::cerr << "[Localizer] WARNING: overlap below minimal overlap! (" << overlap << " < " << minimal_overlap_ << ")\n";
+
+  if (overlap < overlap_threshold_)
+    std::cout << "[Localizer] overlap below threshold! (" << overlap << " < " << overlap_threshold_ << ")\n";
+
+  return (overlap >= overlap_threshold_);
+}
+
+template<typename T>
+bool Localizer<T>::IsBetterComposition(T current_overlap, const LocalMapComposition candidate_comp)
+{
+  // The same composition is not a better composition
+  if (local_map_.HasSameComposition(candidate_comp))
+    return false;
+
+  T candidate_overlap = ComputeOverlap(candidate_comp);
 
   return IsOverlapEnough(candidate_overlap) and (candidate_overlap > current_overlap);
 }
