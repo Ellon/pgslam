@@ -33,7 +33,7 @@ public:
   const DP & Cloud() const;
   DP CloudInWorldFrame() const;
 
-  Composition Composition() const;
+  Composition GetComposition() const;
 
   Vertex ReferenceVertex() const;
   const Keyframe & ReferenceKeyframe() const;

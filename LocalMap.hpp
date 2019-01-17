@@ -95,7 +95,7 @@ typename LocalMap<T>::DP LocalMap<T>::CloudInWorldFrame() const
 }
 
 template<typename T>
-typename LocalMap<T>::Composition LocalMap<T>::Composition() const
+typename LocalMap<T>::Composition LocalMap<T>::GetComposition() const
 {
   Composition comp{data_.capacity()};
   for (auto & e : data_)
