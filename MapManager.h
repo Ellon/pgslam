@@ -14,6 +14,7 @@ namespace pgslam {
 
 // Prototypes of main classes to be used on weak pointers
 template<typename T> class Localizer;
+template<typename T> class LoopCloser;
 
 template<typename T>
 class MapManager {
@@ -21,6 +22,9 @@ public:
   using Ptr = std::shared_ptr<MapManager<T>>;
 
   IMPORT_PGSLAM_TYPES(T)
+
+  using LoopCloserPtr = std::shared_ptr<LoopCloser<T>>;
+  using LoopCloserWPtr = std::weak_ptr<LoopCloser<T>>;
 
   using LocalMapComposition = typename pgslam::LocalMap<T>::Composition;
 
@@ -30,6 +34,8 @@ public:
 
   std::unique_lock<std::mutex> GetGraphLock();
   const Graph & GetGraph();
+
+  void SetLoopCloser(LoopCloserWPtr loop_closer_ptr);
 
   // Methods used by the Localizer
   Vertex AddFirstKeyframe(DPPtr cloud, const Matrix &T_world_kf);
@@ -51,6 +57,9 @@ private:
   std::mutex graph_mutex_;
   //! Vertex that is considered fixed for the optimization.
   Vertex fixed_keyframe_;
+
+  //! Weak pointer to loop closer object
+  LoopCloserWPtr loop_closer_wptr_;
 
 };
 

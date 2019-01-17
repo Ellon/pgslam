@@ -35,6 +35,12 @@ const typename MapManager<T>::Graph & MapManager<T>::GetGraph()
 }
 
 template<typename T>
+void MapManager<T>::SetLoopCloser(LoopCloserWPtr loop_closer_ptr)
+{
+  loop_closer_wptr_ = loop_closer_ptr;
+}
+
+template<typename T>
 typename MapManager<T>::Vertex MapManager<T>::AddFirstKeyframe(DPPtr cloud, const Matrix &T_world_kf)
 {
   // Add data to graph structure
@@ -133,9 +139,11 @@ typename MapManager<T>::Vertex MapManager<T>::AddNewKeyframe(Vertex from, const 
   graph_[e].cov_from_to = meas_cov_from_newkf;
   graph_[e].weight = Weight(meas_T_from_newkf, meas_cov_from_newkf);
 
-
-
-  // TODO_ADD_INPUT_TO_LOOP_CLOSING_HERE;
+  if (auto loop_closer_ptr = loop_closer_wptr_.lock()) {
+    loop_closer_ptr->AddNewVertex(newkf);
+  } else {
+    std::cerr << "[MapManager] loop_closer_wptr_ is expired\n";
+  }
 
   std::cout << "[MapManager] Added keyframe\n";
 
