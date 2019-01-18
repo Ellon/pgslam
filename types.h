@@ -53,7 +53,7 @@ struct Types
     T weight;
   };
 
-  using Graph = boost::adjacency_list<boost::listS, boost::setS, boost::bidirectionalS, Keyframe, Constraint>;
+  using Graph = boost::adjacency_list<boost::listS, boost::listS, boost::undirectedS, Keyframe, Constraint>;
   using Vertex = typename boost::graph_traits<Graph>::vertex_descriptor;
   using Edge = typename boost::graph_traits<Graph>::edge_descriptor;
 
