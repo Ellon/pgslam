@@ -122,24 +122,6 @@ compute_geom_dist(typename DistanceMap::key_type v, DistanceMap d_map) {
   return GDC(v, d_map);
 }
 
-// Predicate function object used to filter edges
-// template <class ToFilterOutContainer>
-// struct filter_out_t {
-//   using Constraint = typename Types<T>::Constraint;
-//   filter_out_t() { }
-//   filter_out_t(const ToFilterOutContainer & to_filter_out)
-//   : m_to_filter_out(to_filter_out) { }
-//   template <typename Edge>
-//   bool operator()(const Edge& e) const {
-//     bool is_odom_edge = boost::get(m_type_map, e) == Constraint::kOdomConstraint;
-//     bool src_not_in_no_loop = std::find(m_no_loop.begin(), m_no_loop.end(), boost::source(e, *m_graph_ptr)) == m_no_loop.end();
-//     bool trg_not_in_no_loop = std::find(m_no_loop.begin(), m_no_loop.end(), boost::target(e, *m_graph_ptr)) == m_no_loop.end();
-//     return (is_odom_edge and src_not_in_no_loop and trg_not_in_no_loop);
-//   }
-// private:
-//   ToFilterOutContainer m_no_loop;
-// };
-
 // Type thrown by the visitor below to stop the search.
 struct StopSearch {};
 
@@ -194,18 +176,6 @@ bool LoopCloser<T>::FindLocalMapCandidate(Vertex input_v)
     .distance_map(topo_map)
     .visitor(boost::make_dijkstra_visitor(compute_geom_dist(input_v, geom_map))));
 
-  // {
-  //   // DEBUG
-  //   typename boost::graph_traits<Graph>::vertex_iterator vi, vi_end;
-  //   std::tie (vi, vi_end) = boost::vertices(graph);
-  //   std::for_each (vi, vi_end, [&graph, &index_map, &topo_map, &geom_map](auto v){
-  //     std::cout << "Vertex: " << index_map[v] 
-  //               << ", topo_dist: " << topo_map[v]
-  //               << ", geom_dist:  " << geom_map[v]
-  //               << "\n";
-  //   });  
-  // }
-
   // Define a set of possible loop closing vertices. They should be both
   // geometrically close and topologically far from the input vertex. We use
   // thresholds to define if a vertex is close or far.
@@ -254,69 +224,7 @@ bool LoopCloser<T>::FindLocalMapCandidate(Vertex input_v)
   using Filtered = boost::filtered_graph<Graph, Predicate, Predicate>;
   Filtered filtered_graph(graph, predicate, predicate);
 
-  // // Define a no loop buffer with the vertices whose topo_dist is equal or below
-  // // a certain threshold
-  // std::vector<Vertex> no_loop_vec;
-  // const auto vs = vertices(graph);
-  // std::copy_if(vs.first, vs.second, std::back_inserter(no_loop_vec), [this, &topo_map](auto v) -> bool {
-  //   return topo_map[v] <= this->topo_dist_threshold_;
-  // });
-
-  // // Order vertices by geometrical distance
-  // std::vector<Vertex> geom_dist_ordered_vertices(vs.first, vs.second);
-  // std::sort(geom_dist_ordered_vertices.begin(), geom_dist_ordered_vertices.end(), [&geom_map](auto v1, auto v2) -> bool {
-  //   return geom_map[v1] < geom_map[v2];
-  // });
-
-  // {
-  //   // DEBUG
-  //   std::cout << "vertices:  ";
-  //   std::for_each (geom_dist_ordered_vertices.begin(), geom_dist_ordered_vertices.end(), [&index_map](auto v){
-  //     std::cout << index_map[v] << " ";
-  //   });
-  //   std::cout << "\n";
-  //   std::cout << "distances: ";
-  //   std::for_each (geom_dist_ordered_vertices.begin(), geom_dist_ordered_vertices.end(), [&geom_map](auto v){
-  //     std::cout << geom_map[v] << " ";
-  //   });
-  //   std::cout << "\n";    
-  // }
-
-  // Create a odometry tree from the graph, i.e. a graph containing only the
-  // odometry edges that is a tree by construction.
-  // edge_filter_t<decltype(edges_to_filter_out)> edge_filter(edges_to_filter_out);
-  // auto edge_filter = [&edge_type_map, &no_loop_vertices](Edge e, Graph &g) -> bool {
-  //   using Constraint = typename Types<T>::Constraint;
-  //   bool is_odom_edge = boost::get(edge_type_map, e) == Constraint::kOdomConstraint;
-  //   bool src_not_in_no_loop = std::find(no_loop_vertices.begin(), no_loop_vertices.end(), boost::source(e, g)) == no_loop_vertices.end();
-  //   bool trg_not_in_no_loop = std::find(no_loop_vertices.begin(), no_loop_vertices.end(), boost::target(e, g)) == no_loop_vertices.end();
-  //   return (is_odom_edge and src_not_in_no_loop and trg_not_in_no_loop);
-  // };
-  // auto vertex_filter = [&no_loop_vertices](Vertex v, Graph &){
-  //   // True if v is not on no-loop set
-  //   return (std::find(no_loop_vertices.begin(), no_loop_vertices.end(), v) == no_loop_vertices.end());
-  // };
-  // boost::filtered_graph<Graph, decltype(edge_filter)> filtered_graph(graph, edge_filter);
-  // boost::filtered_graph<Graph, decltype(edge_filter), decltype(vertex_filter)> filtered_graph(graph, edge_filter, vertex_filter);
-
-  // auto topo_dist_greater_than_threshold = [this, &topo_map](Vertex v) -> bool { return topo_map[v] > this->topo_dist_threshold_; };
-
-  // // Test all vertices that are below a certain geom dist threshold
-  // for (auto vi = geom_dist_ordered_vertices.begin(); vi != geom_dist_ordered_vertices.end() and geom_map[*vi] <= geom_dist_threshold_; vi++) {
-  //   // Do not test the input vertex
-  //   if (*vi == input_v) continue;
-
-  //   // Find N-1 neighbors of the vertex that can be used in the local map candidate
-  //   boost::dijkstra_shortest_paths(filtered_graph, *vi,
-  //     boost::weight_map(boost::get(&Constraint::weight, filtered_graph))
-  //     .vertex_index_map(index_map)
-  //     // .distance_map(topo_map)
-  //     .visitor(boost::make_dijkstra_visitor(std::make_pair(
-  //       record_n_if(candidate_vertices, candidade_local_map_.capacity(), topo_dist_greater_than_threshold),
-  //       )))
-  //     );
-  // }
-
+  // Test all candidates
   const auto expected_size = candidade_local_map_.Capacity();
   for (auto candidate_v : candidate_vertices) {
     LocalMapComposition candidate_composition(expected_size);
