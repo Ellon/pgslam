@@ -6,6 +6,7 @@
 
 #include "types.h"
 #include "MapManager.h"
+#include "LocalMap.h"
 
 namespace pgslam {
 
@@ -18,6 +19,10 @@ public:
 
   IMPORT_PGSLAM_TYPES(T)
 
+  using LocalMap = pgslam::LocalMap<T>;
+  using LocalMapDataBuffer = typename pgslam::LocalMap<T>::DataBuffer;
+  using LocalMapComposition = typename pgslam::LocalMap<T>::Composition;
+
 public:
   LoopCloser(MapManagerPtr map_manager_ptr);
   ~LoopCloser();
@@ -26,6 +31,8 @@ public:
   void Run();
   void Main();
 
+private:
+  bool FindLocalMapCandidate(Vertex input_v);
 
 private:
   // Variables used to input data in the thread
@@ -42,6 +49,11 @@ private:
 
   //! Object to store shared data
   MapManagerPtr map_manager_ptr_;
+
+  T topo_dist_threshold_;
+  T geom_dist_threshold_;
+
+  LocalMap candidade_local_map_;
 
 };
 
