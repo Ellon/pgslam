@@ -47,10 +47,6 @@ public:
   Vertex FindClosestVertex(const Matrix & T_world_x);
 
 private:
-  T Distance(const Matrix & T1, const Matrix & T2);
-  T Weight(const Matrix & T_meas, const CovMatrix & cov_meas);
-
-private:
   //! Graph structure used to store map data
   Graph graph_;
   //! Mutex that controls access to graph_

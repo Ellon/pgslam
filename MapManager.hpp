@@ -2,6 +2,7 @@
 #define PGSLAM_MAP_MANAGER_HPP
 
 #include "MapManager.h"
+#include "metrics.h"
 
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 
@@ -137,7 +138,7 @@ typename MapManager<T>::Vertex MapManager<T>::AddNewKeyframe(Vertex from, const 
   graph_[e].type = Constraint::kOdomConstraint;
   graph_[e].T_from_to = meas_T_from_newkf;
   graph_[e].cov_from_to = meas_cov_from_newkf;
-  graph_[e].weight = Weight(meas_T_from_newkf, meas_cov_from_newkf);
+  graph_[e].weight = Metrics<T>::Weight(meas_T_from_newkf, meas_cov_from_newkf);
 
   if (auto loop_closer_ptr = loop_closer_wptr_.lock()) {
     loop_closer_ptr->AddNewVertex(newkf);
@@ -158,12 +159,12 @@ typename MapManager<T>::Vertex MapManager<T>::FindClosestVertex(const Matrix & T
 
   // Compute distance for the first vertex
   Vertex closest_v = *vi;
-  T closest_dist = Distance(graph_[closest_v].optimized_T_world_kf, T_world_x);
+  T closest_dist = Metrics<T>::Distance(graph_[closest_v].optimized_T_world_kf, T_world_x);
 
   // Find the closest vertex
   vi++;
   std::for_each(vi, vi_end, [this, &T_world_x, &closest_v, &closest_dist](Vertex v){
-    T dist = Distance(this->graph_[v].optimized_T_world_kf, T_world_x);
+    T dist = Metrics<T>::Distance(this->graph_[v].optimized_T_world_kf, T_world_x);
     if (dist < closest_dist) {
       closest_v = v;
       closest_dist = dist;
@@ -171,20 +172,6 @@ typename MapManager<T>::Vertex MapManager<T>::FindClosestVertex(const Matrix & T
   });
 
   return closest_v;
-}
-
-template<typename T>
-T MapManager<T>::Distance(const Matrix & T1, const Matrix & T2)
-{
-  auto p1 = T1.col(3).head(3);
-  auto p2 = T2.col(3).head(3);
-  return (p2 - p1).norm();
-}
-
-template<typename T>
-T MapManager<T>::Weight(const Matrix & T_meas, const CovMatrix & cov_meas)
-{
-  return T_meas.col(3).head(3).norm();
 }
 
 } // pgslam
