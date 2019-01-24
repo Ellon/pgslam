@@ -52,7 +52,6 @@ private:
   void UpdateBeforeIcp();
   void UpdateAfterIcp();
 
-  void UpdateWorldRefkfPose(const Graph & g);
   void UpdateRefkfRobotPose(const Graph & g);
   void UpdateWorldRobotPose(const Graph & g);
   bool IsOverlapEnough(T overlap);
@@ -87,8 +86,6 @@ private:
   MapManagerPtr map_manager_ptr_;
 
   // Variables used to store local and global robot poses
-  //! Current reference keyframe at the world frame
-  Matrix T_world_refkf_;
   //! Current robot pose at the current reference keyframe
   Matrix T_refkf_robot_;
   //! Current robot pose at world keyframe

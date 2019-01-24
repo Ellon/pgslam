@@ -18,7 +18,6 @@ Localizer<T>::Localizer(MapManagerPtr map_manager_ptr) :
   input_cloud_ptr_{nullptr},
   rigid_transformation_{PM::get().REG(Transformation).create("RigidTransformation")},
   map_manager_ptr_{map_manager_ptr},
-  T_world_refkf_{Matrix::Identity(4,4)},
   T_refkf_robot_{Matrix::Identity(4,4)},
   T_world_robot_{Matrix::Identity(4,4)},
   last_input_T_world_robot_{Matrix::Identity(4,4)},
@@ -147,7 +146,7 @@ void Localizer<T>::Main()
     // Correct the input pose through ICP
     timer.Start();
     T_refkf_robot_ = icp_sequence_(*input_cloud_ptr_, input_T_refkf_robot);
-    T_world_robot_ = T_world_refkf_ * T_refkf_robot_;
+    T_world_robot_ = local_map_.ReferenceKeyframe().optimized_T_world_kf * T_refkf_robot_;
     timer.Stop("[Localizer] ICP");
 
     // Perfom all updates needed after the ICP call
@@ -174,7 +173,6 @@ void Localizer<T>::ProcessFirstCloud(DPPtr cloud, const Matrix &T_world_robot)
   // Set map on icp object
   icp_sequence_.setMap(local_map_.Cloud());
   // The first keyframe is coincident with the robot
-  T_world_refkf_ = T_world_robot;
   T_refkf_robot_ = Matrix::Identity(4,4);
   T_world_robot_ = T_world_robot;
 }
@@ -188,7 +186,6 @@ void Localizer<T>::UpdateBeforeIcp()
 
   // Update world robot pose if refkf pose was updated in the graph
   if (local_map_.IsReferenceKeyframeOutdated(graph)) {
-    UpdateWorldRefkfPose(graph);
     UpdateWorldRobotPose(graph);
   }
 
@@ -203,7 +200,6 @@ void Localizer<T>::UpdateBeforeIcp()
     // Update local robot pose if needed (different or updated refkf)
     if (local_map_.ReferenceVertex() != old_refkf_vertex or 
         local_map_.ReferenceKeyframe().update_time > old_refkf_update_time) {
-      UpdateWorldRefkfPose(graph);
       UpdateRefkfRobotPose(graph);
     }
 
@@ -216,7 +212,6 @@ void Localizer<T>::UpdateBeforeIcp()
     icp_sequence_.setMap(local_map_.Cloud());
     // Update local robot pose if updated refkf
     if (local_map_.ReferenceKeyframe().update_time > old_refkf_update_time) {
-      UpdateWorldRefkfPose(graph);
       UpdateRefkfRobotPose(graph);
     }
   }
@@ -250,12 +245,6 @@ void Localizer<T>::UpdateAfterIcp()
     if (IsBetterComposition(overlap, composition_candidate))
       next_local_map_composition_ = std::move(composition_candidate);
   }
-}
-
-template<typename T>
-void Localizer<T>::UpdateWorldRefkfPose(const Graph & g)
-{
-  T_world_refkf_ = g[local_map_.ReferenceVertex()].T_world_kf;
 }
 
 template<typename T>
@@ -365,7 +354,7 @@ template<typename T>
 std::pair<typename Localizer<T>::DP, bool> Localizer<T>::GetLocalMapInWorldFrame()
 {
   if(icp_sequence_.hasMap())
-    return std::make_pair(rigid_transformation_->compute(icp_sequence_.getPrefilteredMap(), T_world_refkf_), true);
+    return std::make_pair(rigid_transformation_->compute(icp_sequence_.getPrefilteredMap(), local_map_.ReferenceKeyframe().optimized_T_world_kf), true);
   else
     return std::make_pair(DP(), false);
 }
