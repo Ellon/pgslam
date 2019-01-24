@@ -219,13 +219,25 @@ void Localizer<T>::UpdateBeforeIcp()
 template<typename T>
 void Localizer<T>::UpdateAfterIcp()
 {
+  auto print_composition = [](const auto & composition, const auto & graph){
+    auto index_map = boost::get(&Keyframe::id, graph);
+    std::cout << "(";
+    for (auto it = composition.begin(); it != composition.end() - 1; it++)
+      std::cout << index_map[*it] << ", ";
+    std::cout << index_map[composition.back()] << ")";
+  };
+
   // Compute current overlap
   T overlap = ComputeOverlap();
+  std::cout << "[Localizer] current overlap = " << overlap << "\n";
 
   auto graph_lock = map_manager_ptr_->GetGraphLock();
 
   if (not IsOverlapEnough(overlap)) {
     LocalMapComposition composition_candidate = map_manager_ptr_->FindLocalMapComposition(local_map_.Capacity(), T_world_robot_);
+    std::cout << "[Localizer] composition_candidate = ";
+    print_composition(composition_candidate, map_manager_ptr_->GetGraph());
+    std::cout << "\n";
     if (not IsBetterComposition(overlap, composition_candidate)) {
       Vertex v = map_manager_ptr_->AddNewKeyframe(
         local_map_.ReferenceVertex(),
@@ -234,13 +246,20 @@ void Localizer<T>::UpdateAfterIcp()
         icp_sequence_.errorMinimizer->getCovariance(),
         input_cloud_ptr_);
       next_local_map_composition_.push_back(v);
+      std::cout << "[Localizer] next_local_map_composition_ = ";
+      print_composition(next_local_map_composition_, map_manager_ptr_->GetGraph());
+      std::cout << "\n";
     } else {
       next_local_map_composition_ = std::move(composition_candidate);
     }
 
     // TODO_FIND_CLOSEST_VERTEX_ONLY_INSIDE_LOCAL_MAP_OR_NOT_QUESTION_MARK;
   } else if (map_manager_ptr_->FindClosestVertex(T_world_robot_) != local_map_.ReferenceVertex()) {
+    // TODO_UPDATE_FROM_GRAPH_OR_ONLY_INSIDE_THE_LOCAL_MAP_QUESTION_MARK;
     LocalMapComposition composition_candidate = map_manager_ptr_->FindLocalMapComposition(local_map_.Capacity(), T_world_robot_);
+    std::cout << "[Localizer] composition_candidate = ";
+    print_composition(composition_candidate, map_manager_ptr_->GetGraph());
+    std::cout << "\n";
     if (IsBetterComposition(overlap, composition_candidate))
       next_local_map_composition_ = std::move(composition_candidate);
   }

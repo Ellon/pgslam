@@ -140,13 +140,15 @@ typename MapManager<T>::Vertex MapManager<T>::AddNewKeyframe(Vertex from, const 
   graph_[e].cov_from_to = meas_cov_from_newkf;
   graph_[e].weight = Metrics<T>::Weight(meas_T_from_newkf, meas_cov_from_newkf);
 
+  // std::cout << "[MapManager DEBUG]  graph_[e].weight = " <<  graph_[e].weight << '\n';
+
   if (auto loop_closer_ptr = loop_closer_wptr_.lock()) {
     loop_closer_ptr->AddNewVertex(newkf);
   } else {
     std::cerr << "[MapManager] loop_closer_wptr_ is expired\n";
   }
 
-  std::cout << "[MapManager] Added keyframe\n";
+  std::cout << "[MapManager] Added keyframe " << graph_[newkf].id << "\n";
 
   return newkf;
 }
