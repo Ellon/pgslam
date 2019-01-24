@@ -15,7 +15,10 @@ LoopCloser<T>::LoopCloser(MapManagerPtr map_manager_ptr) :
   map_manager_ptr_{map_manager_ptr},
   topo_dist_threshold_{3}, // TODO set this from a parameter
   geom_dist_threshold_{3}, // TODO set this from a parameter
-  candidade_local_map_{3} // TODO set this from a parameter
+  overlap_threshold_{0.8}, // TODO set this from a parameter
+  residual_error_threshold_{5000}, // TODO set this from a parameter
+  candidate_local_map_{3}, // TODO set this from a parameter
+  input_cloud_ptr_{nullptr}
 {}
 
 template<typename T>
@@ -26,6 +29,25 @@ LoopCloser<T>::~LoopCloser()
   new_vertex_cond_var_.notify_all();
   if (main_thread_.joinable())
     main_thread_.join();
+}
+
+template<typename T>
+void LoopCloser<T>::SetIcpConfig(const std::string &config_path)
+{
+  {
+    // Store the yaml as a string so it can be used to create other
+    // icp_sequence later.
+    std::ifstream ifs{config_path, std::ios::ate}; // open the file "at the end"
+    auto size = ifs.tellg();
+    icp_config_buffer_ = std::string(size, '\0');
+    ifs.seekg(0);
+    if(not ifs.read(&icp_config_buffer_[0], size))
+      throw std::runtime_error("[LoopCloser] Error buffering icp config into a string!");
+  }
+
+  // Build stream from buffered string
+  std::istringstream iss{icp_config_buffer_};
+  icp_.loadFromYaml(iss);
 }
 
 template<typename T>
@@ -50,14 +72,6 @@ void LoopCloser<T>::Run()
 template<typename T>
 void LoopCloser<T>::Main()
 {
-  auto print_composition = [](const auto & composition, const auto & graph){
-    auto index_map = boost::get(&Keyframe::id, graph);
-    std::cout << "(";
-    for (auto it = composition.begin(); it != composition.end() - 1; it++)
-      std::cout << index_map[*it] << ", ";
-    std::cout << index_map[composition.back()] << ")";
-  };
-
   // main loop
   while(not stop_) {
 
@@ -75,6 +89,8 @@ void LoopCloser<T>::Main()
       new_vertex_buffer_.pop_front();
     }
 
+    // Recover input vertex data from the graph and try to find a candidate local map
+    Matrix input_T_world_kf;
     {
       auto graph_lock = map_manager_ptr_->GetGraphLock();
 
@@ -83,17 +99,33 @@ void LoopCloser<T>::Main()
                 << map_manager_ptr_->GetGraph()[input_vertex].id
                 << "\n";
 
-      bool found_candidate = FindLocalMapCandidate(input_vertex);
+      // If found, the candidate local map will be stored in
+      // candidate_local_map_ (an object variable)
+      bool candidate_found = FindLocalMapCandidate(input_vertex);
 
-      if (found_candidate) {
-        std::cout << "[LoopCloser] Candidate found! -> ";
-        print_composition(candidade_local_map_.GetComposition(), map_manager_ptr_->GetGraph());
-        std::cout << "\n";
-      } else {
-        std::cout << "[LoopCloser] Candidate NOT found!\n";
-      }
+      // Nothing else to do if we could not find a candidate
+      if (not candidate_found) continue;
 
+      // We have a candidate, so we need to recover input vertex's cloud and
+      // pose from the graph
+      const auto & graph = map_manager_ptr_->GetGraph();
+      input_cloud_ptr_ = graph[input_vertex].cloud_ptr;
+      input_T_world_kf = graph[input_vertex].optimized_T_world_kf;
     }
+
+    // Compute the input kf pose in the reference keyframe, that will be
+    // the input for the ICP below
+    // TODO: Maybe consider only 2D displacements for the input transform?
+    Matrix input_T_refkf_kf = candidate_local_map_.ReferenceKeyframe().optimized_T_world_kf.inverse() * input_T_world_kf;
+
+    // Perform ICP to try to align the input cloud to the candidate local map
+    T_refkf_kf_ = icp_(*input_cloud_ptr_, candidate_local_map_.Cloud(), input_T_refkf_kf);
+
+    // Check if ICP succeed
+    bool icp_succeed = CheckIcpResult();
+
+    // Add loop closing constraint to the optimizer
+
   }
 }
 
@@ -206,13 +238,13 @@ bool LoopCloser<T>::FindLocalMapCandidate(Vertex input_v)
   std::copy_if(es.first, es.second, std::back_inserter(suppressed_edges), [&graph, &edge_type_map, &suppressed_vertices](auto e) -> bool {
     using Constraint = typename Types<T>::Constraint;
     bool is_loop_edge = boost::get(edge_type_map, e) == Constraint::kLoopConstraint;
-    bool src_filtered_out = std::find(suppressed_vertices.begin(), suppressed_vertices.end(), boost::source(e, graph)) != suppressed_vertices.end();
-    bool trg_filtered_out = std::find(suppressed_vertices.begin(), suppressed_vertices.end(), boost::target(e, graph)) != suppressed_vertices.end();
-    return (is_loop_edge or src_filtered_out or trg_filtered_out);
+    bool src_suppressed = std::find(suppressed_vertices.begin(), suppressed_vertices.end(), boost::source(e, graph)) != suppressed_vertices.end();
+    bool trg_suppressed = std::find(suppressed_vertices.begin(), suppressed_vertices.end(), boost::target(e, graph)) != suppressed_vertices.end();
+    return (is_loop_edge or src_suppressed or trg_suppressed);
   });
 
-  // Create the filtered version of the graph, removing all edges and vertices
-  // in both sets above.
+  // Predicate used to filter the graph. It removes all edges and vertices in
+  // both sets above.
   struct Predicate {
     bool operator()(Edge e) const {return std::find(suppressed_edges->begin(), suppressed_edges->end(), e) == suppressed_edges->end(); }
     bool operator()(Vertex v) const {return std::find(suppressed_vertices->begin(), suppressed_vertices->end(), v) == suppressed_vertices->end(); }
@@ -221,16 +253,17 @@ bool LoopCloser<T>::FindLocalMapCandidate(Vertex input_v)
     std::vector<Vertex> * suppressed_vertices;
   } predicate {&suppressed_edges, &suppressed_vertices};
 
+  // Create the filtered version of the graph
   using Filtered = boost::filtered_graph<Graph, Predicate, Predicate>;
   Filtered filtered_graph(graph, predicate, predicate);
 
   // Test all candidates
-  const auto expected_size = candidade_local_map_.Capacity();
+  const auto expected_size = candidate_local_map_.Capacity();
   for (auto candidate_v : candidate_vertices) {
     LocalMapComposition candidate_composition(expected_size);
 
-    // Try to find a local map around the candidate vertex using the odometry
-    // tree. The dijkstra call is inside a try-catch to catch the exception
+    // Try to find a local map around the candidate vertex using the filtered
+    // graph. The dijkstra call is inside a try-catch to catch the exception
     // throw by the visitor when n vertices are recorded.
     try {
       boost::dijkstra_shortest_paths(filtered_graph, candidate_v,
@@ -241,13 +274,88 @@ bool LoopCloser<T>::FindLocalMapCandidate(Vertex input_v)
     } catch (StopSearch) {}
 
     if (candidate_composition.size() == expected_size) {
-      candidade_local_map_.UpdateToNewComposition(graph, candidate_composition);
-      return true; // Found a candidate. It is stored on candidade_local_map_.
+      candidate_local_map_.UpdateToNewComposition(graph, candidate_composition);
+
+      // DEBUG
+      auto print_composition = [](const auto & composition, const auto & index_map){
+        std::cout << "(";
+        for (auto it = composition.begin(); it != composition.end() - 1; it++)
+          std::cout << index_map[*it] << ", ";
+        std::cout << index_map[composition.back()] << ")";
+      };
+      std::cout << "[LoopCloser] Candidate found! -> ";
+      print_composition(candidate_composition, index_map);
+      std::cout << "\n";
+
+      return true; // Found a candidate. It is stored on candidate_local_map_.
     }
   }
 
+  // DEBUG
+  std::cout << "[LoopCloser] Candidate NOT found!\n";
+
   // Could not find a candidate
   return false;
+}
+
+template<typename T>
+bool LoopCloser<T>::CheckIcpResult() const
+{
+  // WARNING: The interface to check for the max number of iterations is not
+  // final yet. See https://github.com/ethz-asl/libpointmatcher/pull/314 for
+  // details.
+
+  // Check if ICP converged because it reached the max number of allowed
+  // iterations
+  // NOTE: This is the solution implemented locally
+  if (icp_.getMaxNumIterationsReached())
+    return false; // Failed
+
+  // NOTE: The commented-out code below is the other way of doing the same as
+  // above that is being considered in the mentioned pull request.
+
+  // using CounterTransformationChecker = typename TransformationCheckersImpl<T>::CounterTransformationChecker;
+  // for (const auto checker_ptr : icp_.transformationCheckers) {
+  //   auto counter_checker_ptr = std::dynamic_pointer_cast<CounterTransformationChecker>(checker_ptr);
+  //   if (counter_checker_ptr and counter_tr_checker_ptr->isMaxIterationReached())
+  //     return false; // Failed
+  // }
+
+  // Check overlap
+  if (icp_.errorMinimizer->getOverlap() < overlap_threshold_)
+    return false; // Failed
+
+  // Check residual error
+  if (ComputeResidualError() > residual_error_threshold_)
+    return false; // Failed
+
+  // If we get here, then ICP succeeded.
+  return true;
+}
+
+template<typename T>
+T LoopCloser<T>::ComputeResidualError() const
+{
+  // Create a temporary icp object
+  ICP temp_icp;
+  std::istringstream iss{icp_config_buffer_};
+  temp_icp.loadFromYaml(iss);
+
+  // Transform input data to express it in ref frame
+  DP reading(*input_cloud_ptr_);
+  temp_icp.transformations.apply(reading, T_refkf_kf_);
+
+  // To compute residual error:
+  // 1) Set reference cloud in the matcher
+  temp_icp.matcher->init(candidate_local_map_.Cloud());
+  // 2) Get matches between transformed data and ref
+  auto matches = temp_icp.matcher->findClosests(reading);
+  // 3) Get outlier weights for the matches
+  auto outlier_weights = temp_icp.outlierFilters.compute(reading, candidate_local_map_.Cloud(), matches);
+  // 4) Compute error
+  T residual = temp_icp.errorMinimizer->getResidualError(reading, candidate_local_map_.Cloud(), outlier_weights, matches);
+
+  return residual;
 }
 
 } // pgslam

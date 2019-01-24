@@ -27,12 +27,16 @@ public:
   LoopCloser(MapManagerPtr map_manager_ptr);
   ~LoopCloser();
 
+  void SetIcpConfig(const std::string &config_path);
+
   void AddNewVertex(Vertex v);
   void Run();
   void Main();
 
 private:
   bool FindLocalMapCandidate(Vertex input_v);
+  bool CheckIcpResult() const;
+  T ComputeResidualError() const;
 
 private:
   // Variables used to input data in the thread
@@ -50,10 +54,27 @@ private:
   //! Object to store shared data
   MapManagerPtr map_manager_ptr_;
 
+  //! Topological distance threshold, below which vertices are considered bad loop closing candidates
   T topo_dist_threshold_;
+  //! Geometrical distance threshold, below which vertices are considered potential loop closing candidates
   T geom_dist_threshold_;
+  //! Minimum overlap threshold, below which we consider that the loop closing ICP failed
+  T overlap_threshold_;
+  //! Residual error threshold, used when testing if loop closing ICP converged
+  T residual_error_threshold_;
 
-  LocalMap candidade_local_map_;
+  //! Variable that store the current local map being processed
+  LocalMap candidate_local_map_;
+
+  //! Buffer to hold the icp configuration loaded from yaml file
+  std::string icp_config_buffer_;
+  //! The ICP object
+  ICP icp_;
+
+  //! Stores the current point cloud been processed
+  DPPtr input_cloud_ptr_;
+  //! Stores the resulting transform of ICP with input cloud and candidate local map
+  Matrix T_refkf_kf_;
 
 };
 
