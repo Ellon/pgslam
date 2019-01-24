@@ -21,6 +21,7 @@ struct Types
   using DPPtr = std::shared_ptr<DP>;
   using Matrix = typename PM::Matrix;
   using CovMatrix = Eigen::Matrix<T, 6, 6 >;
+  using ICP = typename PM::ICP;
   using ICPSequence = typename PM::ICPSequence;
   using TransformationPtr = std::shared_ptr<typename PM::Transformation>;
   using DataPointsFilters = typename PM::DataPointsFilters;
@@ -68,6 +69,7 @@ struct Types
   using DPPtr = typename pgslam::Types<TYPE>::DPPtr;                         \
   using Matrix = typename pgslam::Types<TYPE>::Matrix;                       \
   using CovMatrix = typename pgslam::Types<TYPE>::CovMatrix;                 \
+  using ICP = typename pgslam::Types<TYPE>::ICP;                             \
   using ICPSequence = typename pgslam::Types<TYPE>::ICPSequence;             \
   using TransformationPtr = typename pgslam::Types<TYPE>::TransformationPtr; \
   using DataPointsFilters = typename pgslam::Types<TYPE>::DataPointsFilters; \
