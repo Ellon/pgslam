@@ -16,6 +16,8 @@ namespace pgslam {
 template<typename T>
 class Localizer {
 public:
+  using Ptr = std::shared_ptr<Localizer<T>>;
+
   using MapManagerPtr = typename MapManager<T>::Ptr;
 
   IMPORT_PGSLAM_TYPES(T)
