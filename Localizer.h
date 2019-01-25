@@ -25,22 +25,17 @@ public:
   using LocalMapComposition = typename pgslam::LocalMap<T>::Composition;
 
 public:
-  struct InputData {
-    unsigned long long int timestamp;
-    std::string world_frame_id;
-    Matrix T_world_robot;
-    Matrix T_robot_sensor;
-    DPPtr cloud_ptr;
-  };
-
-public:
   Localizer(MapManagerPtr map_manager_ptr);
   ~Localizer();
 
   void SetLocalIcpConfig(const std::string &config_path);
   void SetInputFiltersConfig(const std::string &config_path);
 
-  void AddNewData(const InputData &data);
+  void AddNewData(unsigned long long int timestamp,
+                  std::string world_frame_id,
+                  Matrix T_world_robot,
+                  Matrix T_robot_sensor,
+                  DPPtr cloud_ptr);
   void Run();
   void Main();
 
@@ -63,8 +58,8 @@ private:
   // Variables used to input data in the thread
   //! Variable used to stop the thread
   bool stop_ = {false};
-  //! Buffer with new data to be processed
-  std::deque<InputData> new_data_buffer_;
+  using InputData = std::tuple<unsigned long long int, std::string, Matrix, Matrix, DPPtr>;
+  std::deque<InputData> new_data_buffer_; //!< Buffer with new data to be processed
   //! Mutex to control access to new_data_buffer_
   std::mutex new_data_mutex_;
   //! Condition variable to inform localization thread of new data
