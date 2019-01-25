@@ -10,9 +10,10 @@
 namespace pgslam {
 
 template<typename T>
-LoopCloser<T>::LoopCloser(MapManagerPtr map_manager_ptr) :
+LoopCloser<T>::LoopCloser(MapManagerPtr map_manager_ptr, OptimizerPtr optimizer_ptr) :
   stop_{false},
   map_manager_ptr_{map_manager_ptr},
+  optimizer_ptr_{optimizer_ptr},
   topo_dist_threshold_{3}, // TODO set this from a parameter
   geom_dist_threshold_{3}, // TODO set this from a parameter
   overlap_threshold_{0.8}, // TODO set this from a parameter
@@ -35,8 +36,7 @@ template<typename T>
 void LoopCloser<T>::SetIcpConfig(const std::string &config_path)
 {
   {
-    // Store the yaml as a string so it can be used to create other
-    // icp_sequence later.
+    // Store the yaml as a string so it can be used to create other icp later.
     std::ifstream ifs{config_path, std::ios::ate}; // open the file "at the end"
     auto size = ifs.tellg();
     icp_config_buffer_ = std::string(size, '\0');
@@ -123,9 +123,14 @@ void LoopCloser<T>::Main()
 
     // Check if ICP succeed
     bool icp_succeed = CheckIcpResult();
-
-    // Add loop closing constraint to the optimizer
-
+    if (icp_succeed) {
+      // Add loop closing constraint to the optimizer
+      optimizer_ptr_->AddNewData(
+        candidate_local_map_.ReferenceVertex(),
+        input_vertex,
+        T_refkf_kf_,
+        icp_.errorMinimizer->getCovariance());
+    }
   }
 }
 

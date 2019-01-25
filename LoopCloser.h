@@ -6,6 +6,7 @@
 
 #include "types.h"
 #include "MapManager.h"
+#include "Optimizer.h"
 #include "LocalMap.h"
 
 namespace pgslam {
@@ -16,6 +17,7 @@ public:
   using Ptr = std::shared_ptr<LoopCloser<T>>;
 
   using MapManagerPtr = typename MapManager<T>::Ptr;
+  using OptimizerPtr = typename Optimizer<T>::Ptr;
 
   IMPORT_PGSLAM_TYPES(T)
 
@@ -24,7 +26,7 @@ public:
   using LocalMapComposition = typename pgslam::LocalMap<T>::Composition;
 
 public:
-  LoopCloser(MapManagerPtr map_manager_ptr);
+  LoopCloser(MapManagerPtr map_manager_ptr, OptimizerPtr optimizer_ptr);
   ~LoopCloser();
 
   void SetIcpConfig(const std::string &config_path);
@@ -51,8 +53,11 @@ private:
   //! Main thread object
   std::thread main_thread_;
 
-  //! Object to store shared data
+  //! Pointer to the object to store shared data
   MapManagerPtr map_manager_ptr_;
+
+  //! Pointer to the object that performs the optimization
+  OptimizerPtr optimizer_ptr_;
 
   //! Topological distance threshold, below which vertices are considered bad loop closing candidates
   T topo_dist_threshold_;
