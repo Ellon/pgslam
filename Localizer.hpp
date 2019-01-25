@@ -38,7 +38,7 @@ Localizer<T>::~Localizer()
 }
 
 template<typename T>
-void Localizer<T>::SetLocalIcpConfig(const std::string &config_path)
+void Localizer<T>::SetIcpConfig(const std::string &config_path)
 {
   {
     // Store the yaml as a string so it can be used to create other

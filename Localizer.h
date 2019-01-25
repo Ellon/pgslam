@@ -28,7 +28,7 @@ public:
   Localizer(MapManagerPtr map_manager_ptr);
   ~Localizer();
 
-  void SetLocalIcpConfig(const std::string &config_path);
+  void SetIcpConfig(const std::string &config_path);
   void SetInputFiltersConfig(const std::string &config_path);
 
   void AddNewData(unsigned long long int timestamp,
