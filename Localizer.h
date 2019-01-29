@@ -51,8 +51,8 @@ private:
 
   void UpdateRefkfRobotPose(const Graph & g);
   void UpdateWorldRobotPose(const Graph & g);
-  T    ComputeOverlap();
-  T    ComputeOverlap(const LocalMapComposition comp);
+  T    ComputeCurrentOverlap();
+  T    ComputeOverlapWith(const LocalMapComposition comp);
   bool IsOverlapEnough(T overlap);
   bool IsBetterComposition(T current_overlap, const LocalMapComposition candidate_comp);
 

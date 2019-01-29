@@ -234,7 +234,7 @@ void Localizer<T>::UpdateAfterIcp()
   };
 
   // Compute current overlap
-  T overlap = ComputeOverlap();
+  T overlap = ComputeCurrentOverlap();
   std::cout << "[Localizer] current overlap = " << overlap << "\n";
 
   auto graph_lock = map_manager_ptr_->GetGraphLock();
@@ -284,13 +284,13 @@ void Localizer<T>::UpdateWorldRobotPose(const Graph & g)
 }
 
 template<typename T>
-T Localizer<T>::ComputeOverlap()
+T Localizer<T>::ComputeCurrentOverlap()
 {
   return icp_sequence_.errorMinimizer->getOverlap();
 }
 
 template<typename T>
-T Localizer<T>::ComputeOverlap(const LocalMapComposition comp)
+T Localizer<T>::ComputeOverlapWith(const LocalMapComposition comp)
 {
   // To compute the overlap with a arbitrary composition, we need to build a
   // local map from it and check if this local map has enough overlap with the
@@ -299,8 +299,8 @@ T Localizer<T>::ComputeOverlap(const LocalMapComposition comp)
   LocalMap temp_local_map{map_manager_ptr_->GetGraph(), comp};
 
   // We use libpointmatcher's ErrorMinimizer::getOverlap() method to compute
-  // the overlap after an ICP (see Localizer<T>::ComputeOverlap()). It uses
-  // ErrorMinimizer's internal variable lastErrorElements that is updated
+  // the overlap after an ICP (see Localizer<T>::ComputeCurrentOverlap()). It
+  // uses ErrorMinimizer's internal variable lastErrorElements that is updated
   // every time we compute the transformation that minimizes the error. If we
   // would follow this path here we would need to perform an ICP between the
   // candidate map and the current input cloud, to then be able to compute the
@@ -377,7 +377,7 @@ bool Localizer<T>::IsBetterComposition(T current_overlap, const LocalMapComposit
   if (local_map_.HasSameComposition(candidate_comp))
     return false;
 
-  T candidate_overlap = ComputeOverlap(candidate_comp);
+  T candidate_overlap = ComputeOverlapWith(candidate_comp);
 
   return IsOverlapEnough(candidate_overlap) and (candidate_overlap > current_overlap);
 }
