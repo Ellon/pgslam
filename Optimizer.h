@@ -1,6 +1,8 @@
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
 
+#include <gtsam/geometry/Pose3.h>
+
 namespace pgslam {
 
 #include "types.h"
@@ -39,6 +41,11 @@ public:
   void AddNewData(Vertex from, Vertex to, const Matrix &T_from_to, const CovMatrix & COV_from_to);
   void Run();
   void Main();
+
+private:
+  Matrix PmCovToGtsamCov(const Matrix &mat);
+  gtsam::Pose3 PmPoseToGtsamPose(const Matrix &mat);
+  Matrix GtsamPoseToPmPose(const gtsam::Pose3 &pose);
 };
 
 } // pgslam

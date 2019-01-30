@@ -45,6 +45,10 @@ public:
     const Matrix & meas_T_from_newkf, const CovMatrix & meas_cov_from_newkf, 
     DPPtr cloud_ptr);
   Vertex FindClosestVertex(const Matrix & T_world_x);
+  Vertex GetFixedVertex();
+  void AddLoopClosingConstraint(Vertex from, Vertex to, const Matrix &T_from_to, const CovMatrix & COV_from_to);
+  void UpdateKeyframeTransform(Vertex v, const Matrix &updated_transform);
+
 
 private:
   //! Graph structure used to store map data
@@ -52,7 +56,7 @@ private:
   //! Mutex that controls access to graph_
   std::mutex graph_mutex_;
   //! Vertex that is considered fixed for the optimization.
-  Vertex fixed_keyframe_;
+  Vertex fixed_vertex_;
 
   //! Weak pointer to loop closer object
   LoopCloserWPtr loop_closer_wptr_;

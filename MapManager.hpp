@@ -54,7 +54,7 @@ typename MapManager<T>::Vertex MapManager<T>::AddFirstKeyframe(DPPtr cloud, cons
 
   // The first keyframe is the one that will be kept fixed during
   // optimization
-  fixed_keyframe_ = v;
+  fixed_vertex_ = v;
 
   std::cout << "[MapManager] Added first keyframe\n";
   return v;
@@ -174,6 +174,34 @@ typename MapManager<T>::Vertex MapManager<T>::FindClosestVertex(const Matrix & T
   });
 
   return closest_v;
+}
+
+template<typename T>
+typename MapManager<T>::Vertex MapManager<T>::GetFixedVertex()
+{
+  return fixed_vertex_;
+}
+
+
+template<typename T>
+void MapManager<T>::AddLoopClosingConstraint(Vertex from, Vertex to, const Matrix &T_from_to, const CovMatrix & COV_from_to)
+{
+  // Add new edge to the graph
+  Edge e;
+  bool success;
+  std::tie(e, success) = add_edge(from, to, graph_);
+  if (not success)
+    throw std::logic_error("MapManager<T>::AddLoopClosingConstraint(): Edge from 'from' to 'to' already exists in the graph");
+  graph_[e].type = Constraint::kLoopConstraint;
+  graph_[e].T_from_to = T_from_to;
+  graph_[e].cov_from_to = COV_from_to;
+  graph_[e].weight = Metrics<T>::Weight(T_from_to, COV_from_to);
+}
+
+template<typename T>
+void MapManager<T>::UpdateKeyframeTransform(Vertex v, const Matrix &updated_transform)
+{
+  graph_[v].optimized_T_world_kf = updated_transform;
 }
 
 } // pgslam
