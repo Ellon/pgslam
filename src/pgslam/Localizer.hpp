@@ -9,8 +9,6 @@
 
 #include <chrono>
 
-#include "Timer.h"
-
 #include <boost/graph/filtered_graph.hpp>
 
 namespace pgslam {
@@ -95,8 +93,6 @@ void Localizer<T>::Main()
 {
   unsigned int count = 0;
 
-  Timer timer;
-
   // main loop
   while(not stop_) {
 
@@ -124,9 +120,7 @@ void Localizer<T>::Main()
     // Apply input filters to the cloud while it is still in scanner frame. We
     // need to perform it here to have the observation direction vectors
     // pointing to the sensor.
-    timer.Start();
     input_filters_.apply(*input_cloud_ptr_);
-    timer.Stop("[Localizer] Input filters");
 
     // Put cloud into robot frame
     (*input_cloud_ptr_) = rigid_transformation_->compute(*input_cloud_ptr_, input_T_robot_sensor);
@@ -152,10 +146,8 @@ void Localizer<T>::Main()
     Matrix input_T_refkf_robot = T_refkf_robot_ * input_dT_robot;
 
     // Correct the input pose through ICP
-    timer.Start();
     T_refkf_robot_ = icp_sequence_(*input_cloud_ptr_, input_T_refkf_robot);
     T_world_robot_ = local_map_.ReferenceKeyframe().optimized_T_world_kf * T_refkf_robot_;
-    timer.Stop("[Localizer] ICP");
 
     // Perform all updates needed after the ICP call
     UpdateAfterIcp();
