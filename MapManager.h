@@ -39,12 +39,9 @@ public:
 
   // Methods used by the Localizer
   Vertex AddFirstKeyframe(DPPtr cloud, const Matrix &T_world_kf);
-  LocalMapComposition FindLocalMapComposition(size_t capacity, const Matrix & T_world_x);
-  LocalMapComposition FindLocalMapComposition(size_t capacity, Vertex src);
   Vertex AddNewKeyframe(Vertex from, const Matrix &T_world_newkf, 
     const Matrix & meas_T_from_newkf, const CovMatrix & meas_cov_from_newkf, 
     DPPtr cloud_ptr);
-  Vertex FindClosestVertex(const Matrix & T_world_x);
   Vertex GetFixedVertex();
   void AddLoopClosingConstraint(Vertex from, Vertex to, const Matrix &T_from_to, const CovMatrix & COV_from_to);
   void UpdateKeyframeTransform(Vertex v, const Matrix &updated_transform);

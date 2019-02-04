@@ -55,6 +55,7 @@ private:
   T    ComputeOverlapWith(const LocalMapComposition comp);
   bool IsOverlapEnough(T overlap);
   bool IsBetterComposition(T current_overlap, const LocalMapComposition candidate_comp);
+  std::pair<LocalMapComposition,bool> FindNeighborLocalMapComposition();
 
 private:
   // Variables used to input data in the thread

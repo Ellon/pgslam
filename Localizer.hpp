@@ -2,6 +2,7 @@
 #define PGSLAM_LOCALIZER_HPP
 
 #include "Localizer.h"
+#include "metrics.h"
 
 #include <iostream>
 #include <fstream>
@@ -9,6 +10,8 @@
 #include <chrono>
 
 #include "Timer.h"
+
+#include <boost/graph/filtered_graph.hpp>
 
 namespace pgslam {
 
@@ -239,12 +242,44 @@ void Localizer<T>::UpdateAfterIcp()
 
   auto graph_lock = map_manager_ptr_->GetGraphLock();
 
-  if (not IsOverlapEnough(overlap)) {
-    LocalMapComposition composition_candidate = map_manager_ptr_->FindLocalMapComposition(local_map_.Capacity(), T_world_robot_);
-    std::cout << "[Localizer] composition_candidate = ";
-    print_composition(composition_candidate, map_manager_ptr_->GetGraph());
-    std::cout << "\n";
-    if (not IsBetterComposition(overlap, composition_candidate)) {
+  if (IsOverlapEnough(overlap)) {
+    // When the overlap is good enough we won't create a new keyframe on the
+    // graph, but still we want to:
+    //
+    // 1) update the local map to one that is more appropriate if the robot is
+    // moving back in the already mapped environment; and
+    //
+    // 2) have the local map referenced on the vertex that is closest to the
+    // current robot position.
+    
+    // Let's first deal with case #1
+    bool neighbor_found = false; 
+    LocalMapComposition neighbor_composition;
+    std::tie(neighbor_composition, neighbor_found) = FindNeighborLocalMapComposition();
+    if (neighbor_found and IsBetterComposition(overlap, neighbor_composition)) {
+      next_local_map_composition_ = std::move(neighbor_composition);
+    } else {
+      // Here we deal with case #2
+      auto closest_v = local_map_.FindClosestVertex(T_world_robot_);
+      auto ref_v = local_map_.ReferenceVertex();
+      if (closest_v != ref_v) {
+        next_local_map_composition_ = local_map_.GetComposition();
+        auto closest_it = std::find(next_local_map_composition_.begin(), next_local_map_composition_.end(), closest_v);
+        auto ref_it = std::find(next_local_map_composition_.begin(), next_local_map_composition_.end(), ref_v);
+        std::iter_swap(closest_it, ref_it);
+      }
+    }
+  } else {
+    // In this case we most likely want to create a new keyframe, since the
+    // case above already keeps the local map to the best one available. But
+    // just in case we still look for a better local map here, and if we can't
+    // find it we add the new keyframe.
+    bool neighbor_found = false; 
+    LocalMapComposition neighbor_composition;
+    std::tie(neighbor_composition, neighbor_found) = FindNeighborLocalMapComposition();
+    if (neighbor_found and IsBetterComposition(overlap, neighbor_composition)) {
+      next_local_map_composition_ = std::move(neighbor_composition);
+    } else {
       Vertex v = map_manager_ptr_->AddNewKeyframe(
         local_map_.ReferenceVertex(),
         T_world_robot_,
@@ -255,19 +290,7 @@ void Localizer<T>::UpdateAfterIcp()
       std::cout << "[Localizer] next_local_map_composition_ = ";
       print_composition(next_local_map_composition_, map_manager_ptr_->GetGraph());
       std::cout << "\n";
-    } else {
-      next_local_map_composition_ = std::move(composition_candidate);
     }
-
-    // TODO_FIND_CLOSEST_VERTEX_ONLY_INSIDE_LOCAL_MAP_OR_NOT_QUESTION_MARK;
-  } else if (map_manager_ptr_->FindClosestVertex(T_world_robot_) != local_map_.ReferenceVertex()) {
-    // TODO_UPDATE_FROM_GRAPH_OR_ONLY_INSIDE_THE_LOCAL_MAP_QUESTION_MARK;
-    LocalMapComposition composition_candidate = map_manager_ptr_->FindLocalMapComposition(local_map_.Capacity(), T_world_robot_);
-    std::cout << "[Localizer] composition_candidate = ";
-    print_composition(composition_candidate, map_manager_ptr_->GetGraph());
-    std::cout << "\n";
-    if (IsBetterComposition(overlap, composition_candidate))
-      next_local_map_composition_ = std::move(composition_candidate);
   }
 }
 
@@ -399,6 +422,100 @@ std::pair<typename Localizer<T>::DP, bool> Localizer<T>::GetLocalMapInWorldFrame
   else
     return std::make_pair(DP(), false);
 }
+
+template<typename T>
+std::pair<typename Localizer<T>::LocalMapComposition, bool> Localizer<T>::FindNeighborLocalMapComposition()
+{
+  // Find set of vertices that are adjacent to current local map
+  std::set<Vertex> map_adj_vs;
+  auto curr_comp = local_map_.GetComposition();
+  const auto & graph = map_manager_ptr_->GetGraph();
+  std::for_each(curr_comp.begin(), curr_comp.end(), [&map_adj_vs, &curr_comp, &graph](auto comp_v) {
+    auto adj_vs = boost::adjacent_vertices(comp_v, graph);
+    std::for_each(adj_vs.first, adj_vs.second, [&map_adj_vs, &curr_comp](auto adj_v){
+      if (std::find(curr_comp.begin(), curr_comp.end(), adj_v) == curr_comp.end())
+        map_adj_vs.insert(adj_v);
+    });
+  });
+
+  // Return here if we could not find adjacent vertices
+  if (map_adj_vs.empty())
+    return std::make_pair(LocalMapComposition(), false);
+
+  // Find the vertex in the adjacency set that is closest to robot
+  auto map_adj_vs_it = map_adj_vs.begin();
+  auto closest_adj_v = *map_adj_vs_it;
+  map_adj_vs_it++;
+  auto closest_dist = Metrics<T>::Distance(graph[closest_adj_v].optimized_T_world_kf, T_world_robot_);
+  std::for_each(map_adj_vs_it, map_adj_vs.end(), [this, &closest_adj_v, &closest_dist, &graph](auto v) {
+    auto dist = Metrics<T>::Distance(graph[v].optimized_T_world_kf, this->T_world_robot_);
+    if (dist < closest_dist) {
+      closest_dist = dist;
+      closest_adj_v = v;
+    }
+  });
+
+  // Create a container with the current composition plus closest adjacent
+  // vertex (we call it "extended composition")
+  std::vector<Vertex> curr_comp_ext(curr_comp.begin(), curr_comp.end());
+  curr_comp_ext.push_back(closest_adj_v);
+
+  // Create a filtered graph with local map, the closest adjacent vertex and
+  // all edges between them. The predicate below is used to create this
+  // filtered graph
+  struct Predicate {
+    bool operator()(Edge e) const {return (std::find(vertices_to_keep->begin(), vertices_to_keep->end(), boost::source(e, *graph)) != vertices_to_keep->end() and
+                                           std::find(vertices_to_keep->begin(), vertices_to_keep->end(), boost::target(e, *graph)) != vertices_to_keep->end()); }
+    bool operator()(Vertex v) const {return std::find(vertices_to_keep->begin(), vertices_to_keep->end(), v) != vertices_to_keep->end(); }
+
+    std::vector<Vertex> * vertices_to_keep;
+    const Graph * graph;
+  } predicate {&curr_comp_ext, &graph};
+  using Filtered = boost::filtered_graph<Graph, Predicate, Predicate>;
+  Filtered filtered_graph(graph, predicate, predicate);
+
+  // Compute the topological distance from the closest adjacent vertex in the
+  // filtered graph
+  std::vector<T> topo_dists(boost::num_vertices(filtered_graph));
+  auto index_map = boost::get(&Keyframe::id, filtered_graph);
+  auto topo_map = boost::make_iterator_property_map(topo_dists.begin(), index_map);
+  boost::dijkstra_shortest_paths(filtered_graph, closest_adj_v,
+    boost::weight_map(boost::get(&Constraint::weight, filtered_graph))
+    .vertex_index_map(index_map)
+    .distance_map(topo_map));
+
+  // Sort the extended composition by DECREASING topological distance (note
+  // the reverse iterators)
+  std::sort(curr_comp_ext.rbegin(), curr_comp_ext.rend(), [&topo_map](auto v1, auto v2) -> bool {
+    return topo_map[v1] < topo_map[v2];
+  });
+
+  // Create the neighbor composition WITH ALL BUT THE LAST TWO of the extended
+  // composition. This is OK because in the worst case of a local map
+  // composition of 1 element, we would still have an extended composition of
+  // 2 elements, thus nothing would be copied.
+  LocalMapComposition neighbor_composition(local_map_.Capacity());
+  std::copy(curr_comp_ext.begin(), curr_comp_ext.end()-2, std::back_inserter(neighbor_composition));
+
+  // Finally add the two last elements in a way that the one closest to the
+  // robot stays at the end (this will be the reference frame). Note that his
+  // will push the first vertex that was added above (most distant one) out of
+  // the neighbor composition, due to it's circular buffer nature
+  auto last = curr_comp_ext.rbegin();
+  auto last_dist = Metrics<T>::Distance(graph[*last].optimized_T_world_kf, T_world_robot_);
+  auto before_last = curr_comp_ext.rbegin()+1;
+  auto before_last_dist = Metrics<T>::Distance(graph[*before_last].optimized_T_world_kf, T_world_robot_);
+  if (before_last_dist < last_dist) {
+    neighbor_composition.push_back(*last);
+    neighbor_composition.push_back(*before_last);
+  } else {
+    neighbor_composition.push_back(*before_last);
+    neighbor_composition.push_back(*last);    
+  }
+
+  return std::make_pair(std::move(neighbor_composition), true);
+}
+
 
 } // pgslam
 

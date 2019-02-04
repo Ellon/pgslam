@@ -61,56 +61,6 @@ typename MapManager<T>::Vertex MapManager<T>::AddFirstKeyframe(DPPtr cloud, cons
 }
 
 template<typename T>
-typename MapManager<T>::LocalMapComposition MapManager<T>::FindLocalMapComposition(size_t capacity, const Matrix & T_world_x)
-{
-  Vertex v = FindClosestVertex(T_world_x);
-  return FindLocalMapComposition(capacity, v);
-}
-
-template<typename T>
-typename MapManager<T>::LocalMapComposition MapManager<T>::FindLocalMapComposition(size_t capacity, Vertex src)
-{
-  // Buffer to store distances
-  using dist_vec_t = std::vector<T>;
-  dist_vec_t distances(num_vertices(graph_));
-
-  // Use Dijkstra to compute distances from src to each vertex
-  boost::dijkstra_shortest_paths(graph_, src,
-    boost::weight_map(boost::get(&Constraint::weight, graph_))
-    .vertex_index_map(boost::get(&Keyframe::id, graph_))
-    .distance_map(boost::make_iterator_property_map(distances.begin(),
-                                               boost::get(&Keyframe::id, graph_))));
-
-  // Create an aux buffer used to find distance based ordering. Each element
-  // will have the Vertex as first and a iterator to respective distance as
-  // second.
-  using order_elem_t = std::pair<Vertex, typename dist_vec_t::iterator>;
-  std::vector<order_elem_t> order(num_vertices(graph_));
-  // Fill the aux buffer
-  typename graph_traits<Graph>::vertex_iterator vi, vi_end;
-  std::tie (vi, vi_end) = vertices(graph_);
-  size_t n = 0;
-  std::for_each (vi, vi_end, [this, &order, &n, &distances](auto v){
-    order[n++] = std::make_pair(v, distances.begin() + this->graph_[v].id);
-  });
-  // Sort the buffer using the distances
-  std::sort (order.begin(), order.end(), [](const auto & a, const auto & b) -> bool {
-    return *(a.second) < *(b.second);
-  });
-
-  // Build the local map composition
-  LocalMapComposition comp(capacity);
-  auto order_it = order.begin();
-  while (order_it != order.end() and capacity > 0) {
-    comp.push_front(order_it->first);
-    order_it++;
-    capacity--;
-  }
-
-  return std::move(comp);
-}
-
-template<typename T>
 typename MapManager<T>::Vertex MapManager<T>::AddNewKeyframe(Vertex from, const Matrix &T_world_newkf, 
     const Matrix & meas_T_from_newkf, const CovMatrix & meas_cov_from_newkf, 
     DPPtr cloud_ptr)
@@ -151,29 +101,6 @@ typename MapManager<T>::Vertex MapManager<T>::AddNewKeyframe(Vertex from, const 
   std::cout << "[MapManager] Added keyframe " << graph_[newkf].id << "\n";
 
   return newkf;
-}
-
-template<typename T>
-typename MapManager<T>::Vertex MapManager<T>::FindClosestVertex(const Matrix & T_world_x)
-{
-  typename graph_traits<Graph>::vertex_iterator vi, vi_end;
-  std::tie(vi, vi_end) = vertices(graph_);
-
-  // Compute distance for the first vertex
-  Vertex closest_v = *vi;
-  T closest_dist = Metrics<T>::Distance(graph_[closest_v].optimized_T_world_kf, T_world_x);
-
-  // Find the closest vertex
-  vi++;
-  std::for_each(vi, vi_end, [this, &T_world_x, &closest_v, &closest_dist](Vertex v){
-    T dist = Metrics<T>::Distance(this->graph_[v].optimized_T_world_kf, T_world_x);
-    if (dist < closest_dist) {
-      closest_v = v;
-      closest_dist = dist;
-    }
-  });
-
-  return closest_v;
 }
 
 template<typename T>
