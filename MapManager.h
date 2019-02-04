@@ -32,17 +32,18 @@ public:
   MapManager(/* args */);
   ~MapManager();
 
-  std::unique_lock<std::mutex> GetGraphLock();
-  const Graph & GetGraph();
-
   void SetLoopCloser(LoopCloserWPtr loop_closer_ptr);
 
-  // Methods used by the Localizer
+  // Getters
+  std::unique_lock<std::mutex> GetGraphLock();
+  const Graph & GetGraph();
+  Vertex GetFixedVertex();
+
+  // Methods to that modify the internal graph
   Vertex AddFirstKeyframe(DPPtr cloud, const Matrix &T_world_kf);
   Vertex AddNewKeyframe(Vertex from, const Matrix &T_world_newkf, 
     const Matrix & meas_T_from_newkf, const CovMatrix & meas_cov_from_newkf, 
     DPPtr cloud_ptr);
-  Vertex GetFixedVertex();
   void AddLoopClosingConstraint(Vertex from, Vertex to, const Matrix &T_from_to, const CovMatrix & COV_from_to);
   void UpdateKeyframeTransform(Vertex v, const Matrix &updated_transform);
 
