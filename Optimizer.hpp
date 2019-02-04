@@ -92,9 +92,9 @@ void Optimizer<T>::Main()
       new_data_buffer_.clear();
     }
 
-    std::cout << "[Optimizer] Optimizing graph with "
+    std::cout << "[Optimizer] Building factor graph with "
               << data_buffer.size()
-              << " new loop closing edges\n";
+              << " new loop closing factors\n";
 
     gtsam::NonlinearFactorGraph factor_graph;
     gtsam::Values initial_values;
@@ -148,8 +148,12 @@ void Optimizer<T>::Main()
 
     } // end of first graph lock scope
 
+    std::cout << "[Optimizer] Optimizing using the factor graph\n";
+
     // Optimize
     gtsam::Values current_estimate = gtsam::LevenbergMarquardtOptimizer(factor_graph, initial_values).optimize();
+
+    std::cout << "[Optimizer] Updating graph poses and adding loop closing edges\n";
 
     {
       auto graph_lock = map_manager_ptr_->GetGraphLock();
@@ -171,6 +175,8 @@ void Optimizer<T>::Main()
       });
 
     } // end of second graph lock scope
+
+    std::cout << "[Optimizer] Finished\n";
 
   }
 }
