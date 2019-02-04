@@ -1,6 +1,9 @@
 #ifndef LOCAL_MAP_HPP
 #define LOCAL_MAP_HPP
 
+#include "LocalMap.h"
+#include "metrics.h"
+
 #include <cassert>
 
 namespace pgslam {
@@ -177,6 +180,28 @@ bool LocalMap<T>::IsReferenceKeyframeOutdated(const Graph & g) const
 {
   // Refkf on the graph is more recent than reference keyframe on data_
   return (g[data_.back().first].update_time > data_.back().second.update_time);
+}
+
+template<typename T>
+typename LocalMap<T>::Vertex LocalMap<T>::FindClosestVertex(const Matrix & T_world_x) const
+{
+  auto it = data_.begin();
+
+  // Compute distance for the first vertex
+  Vertex closest_v = it->first;
+  T closest_dist = Metrics<T>::Distance(it->second.optimized_T_world_kf, T_world_x);
+
+  // Find the closest vertex
+  it++;
+  std::for_each(it, data_.end(), [&T_world_x, &closest_v, &closest_dist](auto & e){
+    T dist = Metrics<T>::Distance(e.second.optimized_T_world_kf, T_world_x);
+    if (dist < closest_dist) {
+      closest_v = e.first;
+      closest_dist = dist;
+    }
+  });
+
+  return closest_v;
 }
 
 

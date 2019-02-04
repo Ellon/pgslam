@@ -45,6 +45,8 @@ public:
   bool IsOutdated(const Graph & graph) const;
   bool IsReferenceKeyframeOutdated(const Graph & graph) const;
 
+  Vertex FindClosestVertex(const Matrix & T_world_x) const;
+
 private:
   void BuildCloudFromData();
 
