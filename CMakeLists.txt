@@ -27,6 +27,7 @@ target_link_libraries(${PROJECT_NAME} INTERFACE
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
     ${EIGEN3_INCLUDE_DIRS}
     ${libpointmatcher_INCLUDE_DIRS} # For some reason I cannot use generator expression INSTALL_INTERFACE here...
     $<INSTALL_INTERFACE:include/>
@@ -116,3 +117,6 @@ install(
     NAMESPACE "${namespace}"
     DESTINATION "${config_install_dir}"
 )
+
+add_executable(instantiation_test tests/instantiation.cpp)
+target_link_libraries(instantiation_test pgslam)
