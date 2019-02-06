@@ -16,8 +16,6 @@ find_dependency(Eigen3 REQUIRED)
 find_dependency(libpointmatcher REQUIRED)
 find_dependency(GTSAM REQUIRED)
 
-set(Boost::timer Boost::timer [PARENT_SCOPE])
-
 include("${CMAKE_CURRENT_LIST_DIR}/@TARGETS_EXPORT_NAME@.cmake")
 set_and_check(@PROJECT_NAME@_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
 check_required_components("@PROJECT_NAME@")
