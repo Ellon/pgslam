@@ -44,6 +44,7 @@ public:
   void AddLoopClosingConstraint(Vertex from, Vertex to, const Matrix &T_from_to, const CovMatrix & COV_from_to);
   void UpdateKeyframeTransform(Vertex v, const Matrix &updated_transform);
 
+  virtual void WriteGraphviz(const std::string & path);
 
 private:
   //! Graph structure used to store map data

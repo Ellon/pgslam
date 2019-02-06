@@ -5,6 +5,7 @@
 #include "metrics.h"
 
 #include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/graph/graphviz.hpp>
 
 namespace pgslam {
 
@@ -124,6 +125,20 @@ void MapManager<T>::UpdateKeyframeTransform(Vertex v, const Matrix &updated_tran
 {
   graph_[v].optimized_T_world_kf = updated_transform;
 }
+
+template<typename T>
+void MapManager<T>::WriteGraphviz(const std::string & path)
+{
+  // Open file for writting
+  std::ofstream ofs(path);
+
+  boost::dynamic_properties dp;
+  dp.property("node_id", boost::get(&Keyframe::id, graph_));
+  dp.property("label", boost::get(&Keyframe::id, graph_));
+
+  boost::write_graphviz_dp(ofs, graph_, dp);
+}
+
 
 } // pgslam
 

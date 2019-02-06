@@ -57,6 +57,8 @@ public:
               Matrix T_world_robot,
               Matrix T_robot_sensor,
               DPPtr cloud_ptr);
+
+  void WriteGraphviz(const std::string & path);
 };
 
 

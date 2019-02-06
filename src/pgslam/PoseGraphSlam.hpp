@@ -64,6 +64,16 @@ void PoseGraphSlamBase<T, MapManagerClass, LocalizerClass, LoopCloserClass, Opti
   localizer_ptr_->AddNewData(timestamp, world_frame_id, T_world_robot, T_robot_sensor, cloud_ptr);
 }
 
+template<typename T,
+  template <typename> class MapManagerClass,
+  template <typename> class LocalizerClass,
+  template <typename> class LoopCloserClass,
+  template <typename> class OptimizerClass>
+void PoseGraphSlamBase<T, MapManagerClass, LocalizerClass, LoopCloserClass, OptimizerClass>::WriteGraphviz(const std::string & path)
+{
+  map_manager_ptr_->WriteGraphviz(path);
+}
+
 } // pgslam
 
 #endif // PGSLAM_POSE_GRAPH_SLAM_HPP
