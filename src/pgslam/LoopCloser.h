@@ -27,32 +27,21 @@ public:
 
 public:
   LoopCloser(MapManagerPtr map_manager_ptr, OptimizerPtr optimizer_ptr);
-  ~LoopCloser();
+  virtual ~LoopCloser();
 
   void SetIcpConfig(const std::string &config_path);
 
-  void AddNewVertex(Vertex v);
-  void Run();
-  void Main();
+  virtual void AddNewVertex(Vertex v);
 
-private:
+protected:
+  virtual bool ProcessLocalMapCandidate();
+
+  void ProcessVertex(Vertex input_vertex);
   bool FindLocalMapCandidate(Vertex input_v);
   bool CheckIcpResult() const;
   T ComputeResidualError() const;
 
 private:
-  // Variables used to input data in the thread
-  //! Variable used to stop the thread
-  bool stop_ = {false};
-  //! Buffer with new data to be processed
-  std::deque<Vertex> new_vertex_buffer_;
-  //! Mutex to control access to new_vertex_buffer_
-  std::mutex new_vertex_mutex_;
-  //! Condition variable to inform localization thread of new data
-  std::condition_variable new_vertex_cond_var_;
-  //! Main thread object
-  std::thread main_thread_;
-
   //! Pointer to the object to store shared data
   MapManagerPtr map_manager_ptr_;
 
@@ -76,6 +65,11 @@ private:
   //! The ICP object
   ICP icp_;
 
+  // Variables used to store data being processed
+  //! Input vertex to which we try to close a loop
+  Vertex input_vertex_;
+  //! Input transformation passed to loop closing ICP
+  Matrix input_T_world_kf_;
   //! Stores the current point cloud been processed
   DPPtr input_cloud_ptr_;
   //! Stores the resulting transform of ICP with input cloud and candidate local map

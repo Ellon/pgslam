@@ -11,7 +11,6 @@ namespace pgslam {
 
 template<typename T>
 LoopCloser<T>::LoopCloser(MapManagerPtr map_manager_ptr, OptimizerPtr optimizer_ptr) :
-  stop_{false},
   map_manager_ptr_{map_manager_ptr},
   optimizer_ptr_{optimizer_ptr},
   topo_dist_threshold_{3}, // TODO set this from a parameter
@@ -24,13 +23,7 @@ LoopCloser<T>::LoopCloser(MapManagerPtr map_manager_ptr, OptimizerPtr optimizer_
 
 template<typename T>
 LoopCloser<T>::~LoopCloser()
-{
-  stop_ = true;
-  // Threads may be waiting, notify all.
-  new_vertex_cond_var_.notify_all();
-  if (main_thread_.joinable())
-    main_thread_.join();
-}
+{}
 
 template<typename T>
 void LoopCloser<T>::SetIcpConfig(const std::string &config_path)
@@ -53,85 +46,63 @@ void LoopCloser<T>::SetIcpConfig(const std::string &config_path)
 template<typename T>
 void LoopCloser<T>::AddNewVertex(Vertex v)
 {
-  { // Add to buffer
-    std::unique_lock<std::mutex> lock(new_vertex_mutex_);
-    new_vertex_buffer_.push_back(v);
-  }
-  // notify main thread
-  new_vertex_cond_var_.notify_one();
+  ProcessVertex(v);
 }
 
 template<typename T>
-void LoopCloser<T>::Run()
+void LoopCloser<T>::ProcessVertex(Vertex input_vertex)
 {
-  std::cout << "[LoopCloser] Starting main thread...\n";
-  stop_ = false;
-  main_thread_ = std::thread(&LoopCloser<T>::Main, this);
+  // Store input vertex internally
+  input_vertex_ = input_vertex;
+
+  bool has_candidate = ProcessLocalMapCandidate();
+  if (not has_candidate)
+    return;
+
+  // Compute the input kf pose in the reference keyframe, that will be
+  // the input for the ICP below
+  // TODO: Maybe consider only 2D displacements for the input transform?
+  Matrix input_T_refkf_kf = candidate_local_map_.ReferenceKeyframe().optimized_T_world_kf.inverse() * input_T_world_kf_;
+
+  // Perform ICP to try to align the input cloud to the candidate local map
+  T_refkf_kf_ = icp_(*input_cloud_ptr_, candidate_local_map_.Cloud(), input_T_refkf_kf);
+
+  // Check if ICP succeed
+  bool icp_succeed = CheckIcpResult();
+  if (icp_succeed) {
+    // Add loop closing constraint to the optimizer
+    optimizer_ptr_->AddNewData(
+      candidate_local_map_.ReferenceVertex(),
+      input_vertex,
+      T_refkf_kf_,
+      icp_.errorMinimizer->getCovariance());
+  }
 }
 
 template<typename T>
-void LoopCloser<T>::Main()
+bool LoopCloser<T>::ProcessLocalMapCandidate()
 {
-  // main loop
-  while(not stop_) {
+  const auto & graph = map_manager_ptr_->GetGraph();
 
-    // Try to get new input vertex, waits if no vertex
-    Vertex input_vertex;
-    {
-      std::unique_lock<std::mutex> lock(new_vertex_mutex_);
-      if (new_vertex_buffer_.empty())
-        new_vertex_cond_var_.wait(lock, [this] {
-          return (not this->new_vertex_buffer_.empty()) or this->stop_;
-        });
-      // Check for shutdown
-      if (stop_) break;
-      input_vertex = new_vertex_buffer_.front();
-      new_vertex_buffer_.pop_front();
-    }
+  std::cout << "[LoopCloser] Looking for a loop closing "
+            << "candidate for keyframe "
+            << graph[input_vertex_].id
+            << "\n";
 
-    // Recover input vertex data from the graph and try to find a candidate local map
-    Matrix input_T_world_kf;
-    {
-      auto graph_lock = map_manager_ptr_->GetGraphLock();
+  // If found, the candidate local map will be stored in
+  // candidate_local_map_ (an object variable)
+  bool candidate_found = FindLocalMapCandidate(input_vertex_);
 
-      std::cout << "[LoopCloser] Looking for a loop closing "
-                << "candidate for keyframe "
-                << map_manager_ptr_->GetGraph()[input_vertex].id
-                << "\n";
+  // Nothing else to do if we could not find a candidate
+  if (not candidate_found) return false;
 
-      // If found, the candidate local map will be stored in
-      // candidate_local_map_ (an object variable)
-      bool candidate_found = FindLocalMapCandidate(input_vertex);
+  // If we get here we have a candidate, so we need to recover input vertex's
+  // cloud and pose from the graph
+  input_cloud_ptr_ = graph[input_vertex_].cloud_ptr;
+  input_T_world_kf_ = graph[input_vertex_].optimized_T_world_kf;
 
-      // Nothing else to do if we could not find a candidate
-      if (not candidate_found) continue;
-
-      // We have a candidate, so we need to recover input vertex's cloud and
-      // pose from the graph
-      const auto & graph = map_manager_ptr_->GetGraph();
-      input_cloud_ptr_ = graph[input_vertex].cloud_ptr;
-      input_T_world_kf = graph[input_vertex].optimized_T_world_kf;
-    }
-
-    // Compute the input kf pose in the reference keyframe, that will be
-    // the input for the ICP below
-    // TODO: Maybe consider only 2D displacements for the input transform?
-    Matrix input_T_refkf_kf = candidate_local_map_.ReferenceKeyframe().optimized_T_world_kf.inverse() * input_T_world_kf;
-
-    // Perform ICP to try to align the input cloud to the candidate local map
-    T_refkf_kf_ = icp_(*input_cloud_ptr_, candidate_local_map_.Cloud(), input_T_refkf_kf);
-
-    // Check if ICP succeed
-    bool icp_succeed = CheckIcpResult();
-    if (icp_succeed) {
-      // Add loop closing constraint to the optimizer
-      optimizer_ptr_->AddNewData(
-        candidate_local_map_.ReferenceVertex(),
-        input_vertex,
-        T_refkf_kf_,
-        icp_.errorMinimizer->getCovariance());
-    }
-  }
+  // Inform that we have a candidate.
+  return true;
 }
 
 // Visitor used to compute geometric distance to one reference vertex

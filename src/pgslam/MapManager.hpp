@@ -24,12 +24,6 @@ MapManager<T>::~MapManager()
 {}
 
 template<typename T>
-std::unique_lock<std::mutex> MapManager<T>::GetGraphLock()
-{
-  return std::unique_lock<std::mutex>(graph_mutex_);
-}
-
-template<typename T>
 const typename MapManager<T>::Graph & MapManager<T>::GetGraph()
 {
   return graph_;

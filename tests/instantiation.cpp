@@ -1,4 +1,5 @@
 #include "pgslam/PoseGraphSlam.h"
+#include "pgslam/PoseGraphSlamMT.h"
 
 int main() {
   {
@@ -7,5 +8,13 @@ int main() {
 
   {
     pgslam::PoseGraphSlam<double> slam;
+  }
+
+  {
+    pgslam::PoseGraphSlamMT<float> slam;
+  }
+
+  {
+    pgslam::PoseGraphSlamMT<double> slam;
   }
 }

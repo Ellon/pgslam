@@ -28,26 +28,25 @@ public:
 
 public:
   Localizer(MapManagerPtr map_manager_ptr);
-  ~Localizer();
+  virtual ~Localizer();
 
   void SetIcpConfig(const std::string &config_path);
   void SetInputFiltersConfig(const std::string &config_path);
 
-  void AddNewData(unsigned long long int timestamp,
+  virtual void AddNewData(unsigned long long int timestamp,
                   std::string world_frame_id,
                   Matrix T_world_robot,
                   Matrix T_robot_sensor,
                   DPPtr cloud_ptr);
-  void Run();
-  void Main();
 
   std::pair<DP,bool> GetLocalMap();
   std::pair<DP,bool> GetLocalMapInWorldFrame();
 
-private:
-  void ProcessFirstCloud(DPPtr cloud, const Matrix &T_world_robot);
-  void UpdateBeforeIcp();
-  void UpdateAfterIcp();
+protected:
+  void ProcessData(const Matrix &input_T_world_robot, const Matrix &input_T_robot_sensor, DPPtr input_cloud_ptr);
+  virtual void ProcessFirstCloud(DPPtr cloud, const Matrix &T_world_robot);
+  virtual void UpdateBeforeIcp();
+  virtual void UpdateAfterIcp();
 
   void UpdateRefkfRobotPose(const Graph & g);
   void UpdateWorldRobotPose(const Graph & g);
@@ -58,18 +57,10 @@ private:
   std::pair<LocalMapComposition,bool> FindNeighborLocalMapComposition();
 
 private:
-  // Variables used to input data in the thread
-  //! Variable used to stop the thread
-  bool stop_ = {false};
-  using InputData = std::tuple<unsigned long long int, std::string, Matrix, Matrix, DPPtr>;
-  std::deque<InputData> new_data_buffer_; //!< Buffer with new data to be processed
-  //! Mutex to control access to new_data_buffer_
-  std::mutex new_data_mutex_;
-  //! Condition variable to inform localization thread of new data
-  std::condition_variable new_data_cond_var_;
-  //! Main thread object
-  std::thread main_thread_;
-  //! Variable used to store the cloud being currently processed by the thread
+  // Variables used to store data being processed
+  //! Variable used to count number of data input
+  size_t count_;
+  //! Variable used to store the cloud being currently processed
   DPPtr input_cloud_ptr_;
 
   // Variables used with data points

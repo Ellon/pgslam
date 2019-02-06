@@ -15,7 +15,7 @@ namespace pgslam {
 
 template<typename T>
 Localizer<T>::Localizer(MapManagerPtr map_manager_ptr) :
-  stop_{false},
+  count_{0},
   input_cloud_ptr_{nullptr},
   rigid_transformation_{PM::get().REG(Transformation).create("RigidTransformation")},
   map_manager_ptr_{map_manager_ptr},
@@ -30,13 +30,7 @@ Localizer<T>::Localizer(MapManagerPtr map_manager_ptr) :
 
 template<typename T>
 Localizer<T>::~Localizer()
-{
-  stop_ = true;
-  // Threads may be waiting, notify all.
-  new_data_cond_var_.notify_all();
-  if (main_thread_.joinable())
-    main_thread_.join();
-}
+{}
 
 template<typename T>
 void Localizer<T>::SetIcpConfig(const std::string &config_path)
@@ -71,98 +65,62 @@ void Localizer<T>::AddNewData(unsigned long long int timestamp,
                               Matrix T_robot_sensor,
                               DPPtr cloud_ptr)
 {
-  { // Add to buffer
-    std::unique_lock<std::mutex> lock(new_data_mutex_);
-    new_data_buffer_.push_back(std::make_tuple(timestamp, world_frame_id,
-        T_world_robot, T_robot_sensor, cloud_ptr));
-  }
-  // notify main thread
-  new_data_cond_var_.notify_one();
+  ProcessData(T_world_robot, T_robot_sensor, cloud_ptr);
 }
 
 template<typename T>
-void Localizer<T>::Run()
+void Localizer<T>::ProcessData(const Matrix &input_T_world_robot, const Matrix &input_T_robot_sensor, DPPtr input_cloud_ptr)
 {
-  std::cout << "[Localizer] Starting main thread...\n";
-  stop_ = false;
-  main_thread_ = std::thread(&Localizer<T>::Main, this);
-}
+  std::cout << "[Localizer] Processing cloud #" << count_ << "\n";
+  count_++;
 
-template<typename T>
-void Localizer<T>::Main()
-{
-  unsigned int count = 0;
+  // Store the input cloud in attribute because it's used in several methods
+  // during the processing
+  input_cloud_ptr_ = input_cloud_ptr;
 
-  // main loop
-  while(not stop_) {
+  // Apply input filters to the cloud while it is still in scanner frame. We
+  // need to perform it here to have the observation direction vectors
+  // pointing to the sensor.
+  input_filters_.apply(*input_cloud_ptr_);
 
-    // Try to get new input data, waits if no data
-    Matrix input_T_world_robot, input_T_robot_sensor;
-    {
-      std::unique_lock<std::mutex> lock(new_data_mutex_);
-      if (new_data_buffer_.empty())
-        new_data_cond_var_.wait(lock, [this] {
-          return (not this->new_data_buffer_.empty()) or this->stop_;
-        });
-      // Check for shutdown
-      if (stop_) break;
-      std::tie(std::ignore,
-               std::ignore,
-               input_T_world_robot,
-               input_T_robot_sensor,
-               input_cloud_ptr_) = new_data_buffer_.front();
-      new_data_buffer_.pop_front();
-    }
+  // Put cloud into robot frame
+  (*input_cloud_ptr_) = rigid_transformation_->compute(*input_cloud_ptr_, input_T_robot_sensor);
 
-    std::cout << "[Localizer] Processing cloud #" << count << "\n";
-    count++;
-
-    // Apply input filters to the cloud while it is still in scanner frame. We
-    // need to perform it here to have the observation direction vectors
-    // pointing to the sensor.
-    input_filters_.apply(*input_cloud_ptr_);
-
-    // Put cloud into robot frame
-    (*input_cloud_ptr_) = rigid_transformation_->compute(*input_cloud_ptr_, input_T_robot_sensor);
-
-    // Next block applies only for the first cloud (i.e. when there is no map yet)
-    if (not local_map_.HasCloud()) {
-      ProcessFirstCloud(input_cloud_ptr_, input_T_world_robot);
-      // Store transforms that will be needed on next iteration
-      last_input_T_world_robot_ = input_T_world_robot;
-      // Nothing more to do with this cloud
-      continue;
-    }
-
-    // Perform all updates needed before calling ICP
-    UpdateBeforeIcp();
-
-    // Compute a delta transform that represents the movement of the robot
-    // since last cloud was processed.
-    Matrix input_dT_robot = last_input_T_world_robot_.inverse() * input_T_world_robot;
-
-    // Compute the input robot pose in the reference keyframe, that will be
-    // the input for the ICP below
-    Matrix input_T_refkf_robot = T_refkf_robot_ * input_dT_robot;
-
-    // Correct the input pose through ICP
-    T_refkf_robot_ = icp_sequence_(*input_cloud_ptr_, input_T_refkf_robot);
-    T_world_robot_ = local_map_.ReferenceKeyframe().optimized_T_world_kf * T_refkf_robot_;
-
-    // Perform all updates needed after the ICP call
-    UpdateAfterIcp();
-
-    // Update last pose input for next iteration
+  // Next block applies only for the first cloud (i.e. when there is no map yet)
+  if (not local_map_.HasCloud()) {
+    ProcessFirstCloud(input_cloud_ptr_, input_T_world_robot);
+    // Store transforms that will be needed on next iteration
     last_input_T_world_robot_ = input_T_world_robot;
+    // Nothing more to do with this cloud
+    return;
+  }
 
-  } // end main loop
+  // Perform all updates needed before calling ICP
+  UpdateBeforeIcp();
+
+  // Compute a delta transform that represents the movement of the robot
+  // since last cloud was processed.
+  Matrix input_dT_robot = last_input_T_world_robot_.inverse() * input_T_world_robot;
+
+  // Compute the input robot pose in the reference keyframe, that will be
+  // the input for the ICP below
+  Matrix input_T_refkf_robot = T_refkf_robot_ * input_dT_robot;
+
+  // Correct the input pose through ICP
+  T_refkf_robot_ = icp_sequence_(*input_cloud_ptr_, input_T_refkf_robot);
+  T_world_robot_ = local_map_.ReferenceKeyframe().optimized_T_world_kf * T_refkf_robot_;
+
+  // Perform all updates needed after the ICP call
+  UpdateAfterIcp();
+
+  // Update last pose input for next iteration
+  last_input_T_world_robot_ = input_T_world_robot;
+
 }
 
 template<typename T>
 void Localizer<T>::ProcessFirstCloud(DPPtr cloud, const Matrix &T_world_robot)
 {
-  auto graph_lock = map_manager_ptr_->GetGraphLock();
-
   Vertex v = map_manager_ptr_->AddFirstKeyframe(cloud, T_world_robot);
   // Update local map vertices
   next_local_map_composition_.clear();
@@ -181,7 +139,6 @@ void Localizer<T>::ProcessFirstCloud(DPPtr cloud, const Matrix &T_world_robot)
 template<typename T>
 void Localizer<T>::UpdateBeforeIcp()
 {
-  auto graph_lock = map_manager_ptr_->GetGraphLock();
   const auto & graph = map_manager_ptr_->GetGraph();
 
   // Update world robot pose if refkf pose was updated in the graph
@@ -231,8 +188,6 @@ void Localizer<T>::UpdateAfterIcp()
   // Compute current overlap
   T overlap = ComputeCurrentOverlap();
   std::cout << "[Localizer] current overlap = " << overlap << "\n";
-
-  auto graph_lock = map_manager_ptr_->GetGraphLock();
 
   if (IsOverlapEnough(overlap)) {
     // When the overlap is good enough we won't create a new keyframe on the
@@ -507,7 +462,6 @@ std::pair<typename Localizer<T>::LocalMapComposition, bool> Localizer<T>::FindNe
 
   return std::make_pair(std::move(neighbor_composition), true);
 }
-
 
 } // pgslam
 

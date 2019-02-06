@@ -1,9 +1,7 @@
 #ifndef PGSLAM_MAP_MANAGER_H
 #define PGSLAM_MAP_MANAGER_H
 
-#include <thread>
 #include <memory>
-#include <condition_variable>
 
 #include <boost/circular_buffer.hpp>
 
@@ -30,12 +28,11 @@ public:
 
 public:
   MapManager(/* args */);
-  ~MapManager();
+  virtual ~MapManager();
 
   void SetLoopCloser(LoopCloserWPtr loop_closer_ptr);
 
   // Getters
-  std::unique_lock<std::mutex> GetGraphLock();
   const Graph & GetGraph();
   Vertex GetFixedVertex();
 
@@ -51,8 +48,6 @@ public:
 private:
   //! Graph structure used to store map data
   Graph graph_;
-  //! Mutex that controls access to graph_
-  std::mutex graph_mutex_;
   //! Vertex that is considered fixed for the optimization.
   Vertex fixed_vertex_;
 

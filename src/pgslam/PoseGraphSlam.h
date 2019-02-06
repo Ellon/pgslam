@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "types.h"
+
 #include "MapManager.h"
 #include "Localizer.h"
 #include "LoopCloser.h"
@@ -11,18 +12,25 @@
 
 namespace pgslam {
 
-template<typename T>
-class PoseGraphSlam
+/** \brief Base class of both single and multi threaded versions
+ */
+template<
+  typename T,
+  template <typename> class MapManagerClass,
+  template <typename> class LocalizerClass,
+  template <typename> class LoopCloserClass,
+  template <typename> class OptimizerClass>
+class PoseGraphSlamBase
 {
 public:
   // Aliases for pgslam main classes
-  using MapManager = pgslam::MapManager<T>;
+  using MapManager = MapManagerClass<T>;
   using MapManagerPtr = typename MapManager::Ptr;
-  using Localizer = pgslam::Localizer<T>;
+  using Localizer = LocalizerClass<T>;
   using LocalizerPtr = typename Localizer::Ptr;
-  using LoopCloser = pgslam::LoopCloser<T>;
+  using LoopCloser = LoopCloserClass<T>;
   using LoopCloserPtr = typename LoopCloser::Ptr;
-  using Optimizer = pgslam::Optimizer<T>;
+  using Optimizer = OptimizerClass<T>;
   using OptimizerPtr = typename Optimizer::Ptr;
 
   IMPORT_PGSLAM_TYPES(T)
@@ -34,9 +42,9 @@ protected:
   LocalizerPtr localizer_ptr_;
 
 public:
-  PoseGraphSlam();
+  PoseGraphSlamBase();
 
-  PoseGraphSlam(const std::string & localizer_input_filters_config,
+  PoseGraphSlamBase(const std::string & localizer_input_filters_config,
                 const std::string & localizer_icp_config,
                 const std::string & loop_closer_icp_config);
 
@@ -49,9 +57,13 @@ public:
               Matrix T_world_robot,
               Matrix T_robot_sensor,
               DPPtr cloud_ptr);
-
-  void Run();
 };
+
+
+/** Template alias for the single thread version
+ */
+template <typename T>
+using PoseGraphSlam = PoseGraphSlamBase<T, MapManager, Localizer, LoopCloser, Optimizer>;
 
 } // pgslam
 
