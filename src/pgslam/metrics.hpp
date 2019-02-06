@@ -1,5 +1,5 @@
-#ifndef METRICS_HPP
-#define METRICS_HPP
+#ifndef PGSLAM_METRICS_HPP
+#define PGSLAM_METRICS_HPP
 
 namespace pgslam {
 
@@ -25,4 +25,4 @@ T Metrics<T>::Weight(const Matrix & T_meas, const CovMatrix & cov_meas)
 
 } // pgslam
 
-#endif // METRICS_HPP
+#endif // PGSLAM_METRICS_HPP

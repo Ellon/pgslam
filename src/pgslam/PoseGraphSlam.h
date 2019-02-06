@@ -1,5 +1,5 @@
-#ifndef POSE_GRAPH_SLAM_H
-#define POSE_GRAPH_SLAM_H
+#ifndef PGSLAM_POSE_GRAPH_SLAM_H
+#define PGSLAM_POSE_GRAPH_SLAM_H
 
 #include <memory>
 
@@ -69,4 +69,4 @@ using PoseGraphSlam = PoseGraphSlamBase<T, MapManager, Localizer, LoopCloser, Op
 
 #include "PoseGraphSlam.hpp"
 
-#endif // POSE_GRAPH_SLAM_H
+#endif // PGSLAM_POSE_GRAPH_SLAM_H

@@ -1,5 +1,5 @@
-#ifndef LOCAL_MAP_HPP
-#define LOCAL_MAP_HPP
+#ifndef PGSLAM_LOCAL_MAP_HPP
+#define PGSLAM_LOCAL_MAP_HPP
 
 #include "LocalMap.h"
 #include "metrics.h"
@@ -225,4 +225,4 @@ void LocalMap<T>::BuildCloudFromData()
 
 } // pgslam
 
-#endif // LOCAL_MAP_HPP
+#endif // PGSLAM_LOCAL_MAP_HPP

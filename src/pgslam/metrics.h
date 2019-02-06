@@ -1,5 +1,5 @@
-#ifndef METRICS_H
-#define METRICS_H
+#ifndef PGSLAM_METRICS_H
+#define PGSLAM_METRICS_H
 
 namespace pgslam {
 
@@ -18,5 +18,5 @@ struct Metrics
 
 #include "metrics.hpp"
 
-#endif // METRICS_H
+#endif // PGSLAM_METRICS_H
   

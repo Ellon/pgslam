@@ -1,5 +1,5 @@
-#ifndef POSE_GRAPH_SLAM_MT_H
-#define POSE_GRAPH_SLAM_MT_H
+#ifndef PGSLAM_POSE_GRAPH_SLAM_MT_H
+#define PGSLAM_POSE_GRAPH_SLAM_MT_H
 
 #include <memory>
 
@@ -33,4 +33,4 @@ public:
 
 #include "PoseGraphSlamMT.hpp"
 
-#endif // POSE_GRAPH_SLAM_MT_H
+#endif // PGSLAM_POSE_GRAPH_SLAM_MT_H

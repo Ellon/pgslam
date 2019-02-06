@@ -1,5 +1,5 @@
-#ifndef OPTIMIZER_HPP
-#define OPTIMIZER_HPP
+#ifndef PGSLAM_OPTIMIZER_HPP
+#define PGSLAM_OPTIMIZER_HPP
 
 #include "Optimizer.h"
 
@@ -154,4 +154,4 @@ void Optimizer<T>::UpdateAfterOptimization()
 
 } // pgslam
 
-#endif // OPTIMIZER_HPP
+#endif // PGSLAM_OPTIMIZER_HPP

@@ -1,5 +1,5 @@
-#ifndef LOCAL_MAP_H
-#define LOCAL_MAP_H
+#ifndef PGSLAM_LOCAL_MAP_H
+#define PGSLAM_LOCAL_MAP_H
 
 #include "types.h"
 
@@ -60,4 +60,4 @@ private:
 
 #include "LocalMap.hpp"
 
-#endif // LOCAL_MAP_H
+#endif // PGSLAM_LOCAL_MAP_H

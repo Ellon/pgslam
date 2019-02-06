@@ -1,5 +1,5 @@
-#ifndef POSE_GRAPH_SLAM_HPP
-#define POSE_GRAPH_SLAM_HPP
+#ifndef PGSLAM_POSE_GRAPH_SLAM_HPP
+#define PGSLAM_POSE_GRAPH_SLAM_HPP
 
 #include "PoseGraphSlam.h"
 
@@ -66,4 +66,4 @@ void PoseGraphSlamBase<T, MapManagerClass, LocalizerClass, LoopCloserClass, Opti
 
 } // pgslam
 
-#endif // POSE_GRAPH_SLAM_HPP
+#endif // PGSLAM_POSE_GRAPH_SLAM_HPP

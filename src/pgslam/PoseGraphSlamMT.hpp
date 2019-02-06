@@ -1,5 +1,5 @@
-#ifndef POSE_GRAPH_SLAM_MT_HPP
-#define POSE_GRAPH_SLAM_MT_HPP
+#ifndef PGSLAM_POSE_GRAPH_SLAM_MT_HPP
+#define PGSLAM_POSE_GRAPH_SLAM_MT_HPP
 
 #include "PoseGraphSlamMT.h"
 
@@ -27,4 +27,4 @@ void PoseGraphSlamMT<T>::Run()
 
 } // pgslam
 
-#endif // POSE_GRAPH_SLAM_MT_HPP
+#endif // PGSLAM_POSE_GRAPH_SLAM_MT_HPP

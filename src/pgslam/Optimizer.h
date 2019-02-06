@@ -1,5 +1,5 @@
-#ifndef OPTIMIZER_H
-#define OPTIMIZER_H
+#ifndef PGSLAM_OPTIMIZER_H
+#define PGSLAM_OPTIMIZER_H
 
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
@@ -56,4 +56,4 @@ protected:
 
 #include "Optimizer.hpp"
 
-#endif // OPTIMIZER_H
+#endif // PGSLAM_OPTIMIZER_H

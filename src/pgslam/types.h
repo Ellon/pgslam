@@ -1,5 +1,5 @@
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef PGSLAM_TYPES_H
+#define PGSLAM_TYPES_H
 
 #include <chrono>
 #include <memory>
@@ -81,4 +81,4 @@ struct Types
   using Vertex = typename pgslam::Types<TYPE>::Vertex;                       \
   using Edge = typename pgslam::Types<TYPE>::Edge;
 
-#endif // TYPES_H
+#endif // PGSLAM_TYPES_H
