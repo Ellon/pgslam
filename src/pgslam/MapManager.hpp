@@ -31,7 +31,7 @@ const typename MapManager<T>::Graph & MapManager<T>::GetGraph()
 }
 
 template<typename T>
-void MapManager<T>::SetLoopCloser(LoopCloserWPtr loop_closer_ptr)
+void MapManager<T>::SetLoopCloser(LoopCloserPtr loop_closer_ptr)
 {
   loop_closer_wptr_ = loop_closer_ptr;
 }

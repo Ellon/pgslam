@@ -30,7 +30,7 @@ public:
   MapManager(/* args */);
   virtual ~MapManager();
 
-  void SetLoopCloser(LoopCloserWPtr loop_closer_ptr);
+  void SetLoopCloser(LoopCloserPtr loop_closer_ptr);
 
   // Getters
   const Graph & GetGraph();
