@@ -13,17 +13,47 @@ template<typename T>
 LoopCloser<T>::LoopCloser(MapManagerPtr map_manager_ptr, OptimizerPtr optimizer_ptr) :
   map_manager_ptr_{map_manager_ptr},
   optimizer_ptr_{optimizer_ptr},
-  topo_dist_threshold_{3}, // TODO set this from a parameter
-  geom_dist_threshold_{3}, // TODO set this from a parameter
-  overlap_threshold_{0.8}, // TODO set this from a parameter
-  residual_error_threshold_{5000}, // TODO set this from a parameter
-  candidate_local_map_{3}, // TODO set this from a parameter
+  topo_dist_threshold_{3},
+  geom_dist_threshold_{3},
+  overlap_threshold_{0.8},
+  residual_error_threshold_{5000},
+  candidate_local_map_{3},
   input_cloud_ptr_{nullptr}
 {}
 
 template<typename T>
 LoopCloser<T>::~LoopCloser()
 {}
+
+template<typename T>
+void LoopCloser<T>::SetTopologicalDistanceThreshold(T topo_dist_threshold)
+{
+  topo_dist_threshold_ = topo_dist_threshold;
+}
+
+template<typename T>
+void LoopCloser<T>::SetGeometricalDistanceThreshold(T geom_dist_threshold)
+{
+  geom_dist_threshold_ = geom_dist_threshold;
+}
+
+template<typename T>
+void LoopCloser<T>::SetOverlapThreshold(T overlap_threshold)
+{
+  overlap_threshold_ = overlap_threshold;
+}
+
+template<typename T>
+void LoopCloser<T>::SetResidualErrorThreshold(T residual_error_threshold)
+{
+  residual_error_threshold_ = residual_error_threshold;
+}
+
+template<typename T>
+void LoopCloser<T>::SetCandidateLocalMapMaxSize(size_t size)
+{
+  candidate_local_map_ = LocalMap(3);
+}
 
 template<typename T>
 void LoopCloser<T>::SetIcpConfig(const std::string &config_path)

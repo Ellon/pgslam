@@ -30,9 +30,14 @@ public:
   Localizer(MapManagerPtr map_manager_ptr);
   virtual ~Localizer();
 
+  void SetLocalMapMaxSize(size_t size);
+  void SetOverlapThreshold(T overlap_threshold);
+  void SetMinimalOverlapThreshold(T minimal_overlap);
   void SetIcpConfig(const std::string &config_path);
   void SetInputFiltersConfig(const std::string &config_path);
 
+  // AddNewData is a virtual method to allow multi-thread handling on the
+  // derivated class
   virtual void AddNewData(unsigned long long int timestamp,
                   std::string world_frame_id,
                   Matrix T_world_robot,
@@ -44,6 +49,8 @@ public:
 
 protected:
   void ProcessData(const Matrix &input_T_world_robot, const Matrix &input_T_robot_sensor, DPPtr input_cloud_ptr);
+  // All the following methods are virtual because they access MapManager and
+  // need special treatment by the multi-thread version
   virtual void ProcessFirstCloud(DPPtr cloud, const Matrix &T_world_robot);
   virtual void UpdateBeforeIcp();
   virtual void UpdateAfterIcp();

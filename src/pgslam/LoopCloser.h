@@ -29,6 +29,11 @@ public:
   LoopCloser(MapManagerPtr map_manager_ptr, OptimizerPtr optimizer_ptr);
   virtual ~LoopCloser();
 
+  void SetTopologicalDistanceThreshold(T topo_dist_threshold);
+  void SetGeometricalDistanceThreshold(T geom_dist_threshold);
+  void SetOverlapThreshold(T overlap_threshold);
+  void SetResidualErrorThreshold(T residual_error_threshold);
+  void SetCandidateLocalMapMaxSize(size_t size);
   void SetIcpConfig(const std::string &config_path);
 
   virtual void AddNewVertex(Vertex v);

@@ -22,15 +22,34 @@ Localizer<T>::Localizer(MapManagerPtr map_manager_ptr) :
   T_refkf_robot_{Matrix::Identity(4,4)},
   T_world_robot_{Matrix::Identity(4,4)},
   last_input_T_world_robot_{Matrix::Identity(4,4)},
-  next_local_map_composition_{3}, // TODO make this a parameter
-  local_map_{3}, // TODO make this a parameter
-  overlap_threshold_{0.8}, // TODO make this a parameter
-  minimal_overlap_{0.5} // TODO make this a parameter
+  next_local_map_composition_{3},
+  local_map_{3},
+  overlap_threshold_{0.8},
+  minimal_overlap_{0.5}
 {}
 
 template<typename T>
 Localizer<T>::~Localizer()
 {}
+
+template<typename T>
+void Localizer<T>::SetLocalMapMaxSize(size_t size)
+{
+  local_map_ = LocalMap(size);
+  next_local_map_composition_ = LocalMapComposition(size);
+}
+
+template<typename T>
+void Localizer<T>::SetOverlapThreshold(T overlap_threshold)
+{
+  overlap_threshold_ = overlap_threshold;
+}
+
+template<typename T>
+void Localizer<T>::SetMinimalOverlapThreshold(T minimal_overlap)
+{
+  minimal_overlap_ = minimal_overlap;
+}
 
 template<typename T>
 void Localizer<T>::SetIcpConfig(const std::string &config_path)
