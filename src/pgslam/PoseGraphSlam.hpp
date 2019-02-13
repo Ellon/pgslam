@@ -17,6 +17,7 @@ PoseGraphSlamBase<T, MapManagerClass, LocalizerClass, LoopCloserClass, Optimizer
     localizer_ptr_{std::make_shared<Localizer>(map_manager_ptr_)}
 {
   // Setup pointers from map manager to main objects
+  map_manager_ptr_->SetLocalizer(localizer_ptr_);
   map_manager_ptr_->SetLoopCloser(loop_closer_ptr_);
 }
 

@@ -31,6 +31,12 @@ const typename MapManager<T>::Graph & MapManager<T>::GetGraph()
 }
 
 template<typename T>
+void MapManager<T>::SetLocalizer(LocalizerPtr localizer_ptr)
+{
+  localizer_wptr_ = localizer_ptr;
+}
+
+template<typename T>
 void MapManager<T>::SetLoopCloser(LoopCloserPtr loop_closer_ptr)
 {
   loop_closer_wptr_ = loop_closer_ptr;

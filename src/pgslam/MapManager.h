@@ -21,6 +21,8 @@ public:
 
   IMPORT_PGSLAM_TYPES(T)
 
+  using LocalizerPtr = std::shared_ptr<Localizer<T>>;
+  using LocalizerWPtr = std::weak_ptr<Localizer<T>>;
   using LoopCloserPtr = std::shared_ptr<LoopCloser<T>>;
   using LoopCloserWPtr = std::weak_ptr<LoopCloser<T>>;
 
@@ -30,6 +32,7 @@ public:
   MapManager(/* args */);
   virtual ~MapManager();
 
+  void SetLocalizer(LocalizerPtr localizer_ptr);
   void SetLoopCloser(LoopCloserPtr loop_closer_ptr);
 
   // Getters
@@ -52,6 +55,8 @@ private:
   //! Vertex that is considered fixed for the optimization.
   Vertex fixed_vertex_;
 
+  //! Weak pointer to localizer object
+  LocalizerWPtr localizer_wptr_;
   //! Weak pointer to loop closer object
   LoopCloserWPtr loop_closer_wptr_;
 
