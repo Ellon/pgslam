@@ -22,6 +22,8 @@ protected:
   // Variables used to input data in the thread
   //! Variable used to stop the thread
   bool stop_ = {false};
+  //! Variable used to indicate if we are outdated wrt the graph
+  bool outdated_ = {false};
   using InputData = std::tuple<unsigned long long int, std::string, Matrix, Matrix, DPPtr>;
   std::deque<InputData> new_data_buffer_; //!< Buffer with new data to be processed
   //! Mutex to control access to new_data_buffer_
@@ -47,8 +49,10 @@ public:
                   Matrix T_robot_sensor,
                   DPPtr cloud_ptr);
 
+  virtual void UpdateFromGraph();
+
+protected:
   virtual void ProcessFirstCloud(DPPtr cloud, const Matrix &T_world_robot);
-  virtual void UpdateBeforeIcp();
   virtual void UpdateAfterIcp();
 
 };
