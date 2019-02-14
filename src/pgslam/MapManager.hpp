@@ -146,6 +146,15 @@ void MapManager<T>::WriteGraphviz(const std::string & path)
   boost::write_graphviz_dp(ofs, graph_, dp);
 }
 
+template<typename T>
+void MapManager<T>::NotifyKeyframeUpdate() const
+{
+  if (auto localizer_ptr = localizer_wptr_.lock()) {
+    localizer_ptr->UpdateFromGraph();
+  } else {
+    std::cerr << "[MapManager] localizer_wptr_ is expired\n";
+  }
+}
 
 } // pgslam
 

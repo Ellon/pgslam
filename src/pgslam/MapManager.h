@@ -49,6 +49,8 @@ public:
 
   virtual void WriteGraphviz(const std::string & path);
 
+  void NotifyKeyframeUpdate() const;
+
 private:
   //! Graph structure used to store map data
   Graph graph_;

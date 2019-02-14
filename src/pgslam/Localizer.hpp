@@ -114,9 +114,6 @@ void Localizer<T>::ProcessData(const Matrix &input_T_world_robot, const Matrix &
     return;
   }
 
-  // Perform all updates needed before calling ICP
-  UpdateBeforeIcp();
-
   // Compute a delta transform that represents the movement of the robot
   // since last cloud was processed.
   Matrix input_dT_robot = last_input_T_world_robot_.inverse() * input_T_world_robot;
@@ -156,46 +153,32 @@ void Localizer<T>::ProcessFirstCloud(DPPtr cloud, const Matrix &T_world_robot)
 
 
 template<typename T>
-void Localizer<T>::UpdateBeforeIcp()
+void Localizer<T>::UpdateFromGraph()
 {
   const auto & graph = map_manager_ptr_->GetGraph();
 
-  // Update world robot pose if refkf pose was updated in the graph
-  if (local_map_.IsReferenceKeyframeOutdated(graph)) {
-    UpdateWorldRobotPose(graph);
-  }
+  // Inspect about all outdated data before performing any changes
+  bool local_map_outdated = local_map_.IsOutdated(graph);
+  bool refkf_outdated = local_map_.IsReferenceKeyframeOutdated(graph);
 
-  if (not local_map_.HasSameComposition(next_local_map_composition_)) {
-    // Store old reference keyframe and vertex
-    Vertex old_refkf_vertex = local_map_.ReferenceVertex();
-    Time old_refkf_update_time = local_map_.ReferenceKeyframe().update_time;
-    // Update/Rebuild local map
-    local_map_.UpdateToNewComposition(graph, next_local_map_composition_);
-    // Set map on icp object
-    icp_sequence_.setMap(local_map_.Cloud());
-    // Update local robot pose if needed (different or updated refkf)
-    if (local_map_.ReferenceVertex() != old_refkf_vertex or 
-        local_map_.ReferenceKeyframe().update_time > old_refkf_update_time) {
-      UpdateRefkfRobotPose(graph);
-    }
-
-  } else if (local_map_.IsOutdated(graph)) {
-    // Store old time
-    Time old_refkf_update_time = local_map_.ReferenceKeyframe().update_time;
-    // Update/Rebuild local map
+  // Update local map if needed
+  if (local_map_outdated) {
     local_map_.UpdateFromGraph(graph);
     // Set map on icp object
     icp_sequence_.setMap(local_map_.Cloud());
-    // Update local robot pose if updated refkf
-    if (local_map_.ReferenceKeyframe().update_time > old_refkf_update_time) {
-      UpdateRefkfRobotPose(graph);
-    }
+  }
+
+  // Update robot pose using updated local map if reference keyframe was
+  // outdated
+  if (refkf_outdated) {
+    UpdateWorldRobotPose();
   }
 }
 
 template<typename T>
 void Localizer<T>::UpdateAfterIcp()
 {
+  // Debug printing function
   auto print_composition = [](const auto & composition, const auto & graph){
     auto index_map = boost::get(&Keyframe::id, graph);
     std::cout << "(";
@@ -203,6 +186,8 @@ void Localizer<T>::UpdateAfterIcp()
       std::cout << index_map[*it] << ", ";
     std::cout << index_map[composition.back()] << ")";
   };
+
+  const auto & graph = map_manager_ptr_->GetGraph();
 
   // Compute current overlap
   T overlap = ComputeCurrentOverlap();
@@ -254,22 +239,37 @@ void Localizer<T>::UpdateAfterIcp()
         input_cloud_ptr_);
       next_local_map_composition_.push_back(v);
       std::cout << "[Localizer] next_local_map_composition_ = ";
-      print_composition(next_local_map_composition_, map_manager_ptr_->GetGraph());
+      print_composition(next_local_map_composition_, graph);
       std::cout << "\n";
     }
   }
+
+  // Update the local map if needed
+  if (not local_map_.HasSameComposition(next_local_map_composition_)) {
+    // Store old reference keyframe and vertex
+    Vertex old_refkf_vertex = local_map_.ReferenceVertex();
+    // Update/Rebuild local map
+    local_map_.UpdateToNewComposition(graph, next_local_map_composition_);
+    // Set map on icp object
+    icp_sequence_.setMap(local_map_.Cloud());
+    // Update local robot pose if refkf changed
+    if (local_map_.ReferenceVertex() != old_refkf_vertex) {
+      UpdateRefkfRobotPose();
+    }
+  }
+
 }
 
 template<typename T>
-void Localizer<T>::UpdateRefkfRobotPose(const Graph & g)
+void Localizer<T>::UpdateRefkfRobotPose()
 {
-  T_refkf_robot_ = g[local_map_.ReferenceVertex()].T_world_kf.inverse() * T_world_robot_;
+  T_refkf_robot_ = local_map_.ReferenceKeyframe().optimized_T_world_kf.inverse() * T_world_robot_;
 }
 
 template<typename T>
-void Localizer<T>::UpdateWorldRobotPose(const Graph & g)
+void Localizer<T>::UpdateWorldRobotPose()
 {
-  T_world_robot_ = g[local_map_.ReferenceVertex()].T_world_kf * T_refkf_robot_;
+  T_world_robot_ = local_map_.ReferenceKeyframe().optimized_T_world_kf * T_refkf_robot_;
 }
 
 template<typename T>

@@ -47,16 +47,19 @@ public:
   std::pair<DP,bool> GetLocalMap();
   std::pair<DP,bool> GetLocalMapInWorldFrame();
 
+  // Method to be called by MapManager after the keyframes get updated with an
+  // optimization result
+  virtual void UpdateFromGraph();
+
 protected:
   void ProcessData(const Matrix &input_T_world_robot, const Matrix &input_T_robot_sensor, DPPtr input_cloud_ptr);
   // All the following methods are virtual because they access MapManager and
   // need special treatment by the multi-thread version
   virtual void ProcessFirstCloud(DPPtr cloud, const Matrix &T_world_robot);
-  virtual void UpdateBeforeIcp();
   virtual void UpdateAfterIcp();
 
-  void UpdateRefkfRobotPose(const Graph & g);
-  void UpdateWorldRobotPose(const Graph & g);
+  void UpdateRefkfRobotPose();
+  void UpdateWorldRobotPose();
   T    ComputeCurrentOverlap();
   T    ComputeOverlapWith(const LocalMapComposition comp);
   bool IsOverlapEnough(T overlap);

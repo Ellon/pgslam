@@ -151,6 +151,9 @@ void Optimizer<T>::UpdateAfterOptimization()
     this->map_manager_ptr_->AddLoopClosingConstraint(from, to, T_from_to, COV_from_to);
   });
 
+  // Let MapManager inform other objects of a keyframe update
+  map_manager_ptr_->NotifyKeyframeUpdate();
+
 }
 
 } // pgslam
