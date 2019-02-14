@@ -33,6 +33,8 @@ private:
   gtsam::Values initial_values_;
   //! Result of the estimation process
   gtsam::Values current_estimate_;
+  //! Time of last optimization
+  Time optimization_time_;
 
   //! Pointer to the object to store shared data
   MapManagerPtr map_manager_ptr_;

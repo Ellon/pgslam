@@ -45,7 +45,7 @@ public:
     const Matrix & meas_T_from_newkf, const CovMatrix & meas_cov_from_newkf, 
     DPPtr cloud_ptr);
   void AddLoopClosingConstraint(Vertex from, Vertex to, const Matrix &T_from_to, const CovMatrix & COV_from_to);
-  void UpdateKeyframeTransform(Vertex v, const Matrix &updated_transform);
+  void UpdateKeyframeTransform(Vertex v, const Matrix &updated_transform, Time update_time);
 
   virtual void WriteGraphviz(const std::string & path);
 

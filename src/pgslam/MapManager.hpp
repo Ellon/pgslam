@@ -127,9 +127,10 @@ void MapManager<T>::AddLoopClosingConstraint(Vertex from, Vertex to, const Matri
 }
 
 template<typename T>
-void MapManager<T>::UpdateKeyframeTransform(Vertex v, const Matrix &updated_transform)
+void MapManager<T>::UpdateKeyframeTransform(Vertex v, const Matrix &updated_transform, Time update_time)
 {
   graph_[v].optimized_T_world_kf = updated_transform;
+  graph_[v].update_time = update_time;
 }
 
 template<typename T>

@@ -66,6 +66,7 @@ void Optimizer<T>::ProcessData()
 
   // Optimize
   current_estimate_ = gtsam::LevenbergMarquardtOptimizer(factor_graph_, initial_values_).optimize();
+  optimization_time_ = std::chrono::high_resolution_clock::now();
 
   std::cout << "[Optimizer] Updating graph poses and adding loop closing edges\n";
 
@@ -138,7 +139,7 @@ void Optimizer<T>::UpdateAfterOptimization()
   // Update the graph with the current estimate
   const auto vs = boost::vertices(graph);
   std::for_each(vs.first, vs.second, [this, &graph](auto v) {
-    this->map_manager_ptr_->UpdateKeyframeTransform(v, this->GtsamPoseToPmPose(this->current_estimate_.template at<gtsam::Pose3>(graph[v].id)));
+    this->map_manager_ptr_->UpdateKeyframeTransform(v, this->GtsamPoseToPmPose(this->current_estimate_.template at<gtsam::Pose3>(graph[v].id)), this->optimization_time_);
   });
 
   // Add loop closing edges to the graph
